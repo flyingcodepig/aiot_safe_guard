@@ -86,7 +86,10 @@ async def lifespan(app: FastAPI):
     action_parser = ActionParser(device_loader)
     fallback_matcher = FallbackMatcher(device_loader)
 
-    input_guard = InputGuard()
+    input_guard = InputGuard(
+        llm_client=llm_planner.client,
+        llm_model=model_name,
+    )
     fact_checker = FactChecker(device_loader)
 
     import config
@@ -133,6 +136,22 @@ async def process_command(req: CommandRequest):
     request_id = f"REQ_{uuid.uuid4().hex[:8]}"
     block_reasons = []
     user_role = policy_engine.get_user_role(req.user_id)
+
+    # 输入安全检测
+    guard_result = input_guard.scan(req.user_input, user_role)
+    if guard_result["risk_level"] == "high":
+        block_reasons.append("输入安全检测: 高风险")
+        audit_logger.log(request_id, req.user_input, user_role, req.device_id, req.action,
+                         guard_result, {}, {}, {}, "block", block_reasons)
+        return CommandResponse(
+            request_id=request_id, user_id=req.user_id, user_role=user_role,
+            device_id=req.device_id, action=req.action, final_decision="block",
+            policy_check={"decision": "fail", "reason": "输入安全检测拦截"},
+            physical_check={"decision": "pass", "reason": "未执行"},
+            device_state_after=None, block_reasons=block_reasons,
+            message="输入被安全检测拦截"
+        )
+
     device_type = device_loader.get_device_type(req.device_id)
 
     if not device_type or device_type == "unknown":
