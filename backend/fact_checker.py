@@ -84,8 +84,10 @@ class SchemaValidator:
                         )
                         break  # 一个参数只报告一次
 
+        return len(errors) == 0, errors
+
     def _check_range(self, pname: str, pvalue, attr: dict, errors: list):
-        """检查单个参数的值范围"""
+        """检查单个参数的值范围（副作用：修改 errors）"""
         if "range" in attr:
             lo, hi = attr["range"]
             if pvalue < lo or pvalue > hi:
@@ -93,8 +95,6 @@ class SchemaValidator:
         if "options" in attr:
             if str(pvalue) not in [str(o) for o in attr["options"]]:
                 errors.append(f"参数 {pname}={pvalue} 不在允许值 {attr['options']} 中")
-
-        return len(errors) == 0, errors
 
 
 class SemanticChecker:
