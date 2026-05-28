@@ -151,6 +151,18 @@ async def process_command(req: CommandRequest):
             device_state_after=None, block_reasons=block_reasons,
             message="输入被安全检测拦截"
         )
+    if guard_result["risk_level"] == "medium":
+        block_reasons.append("输入安全检测: 中风险，直接命令端点需人工审核")
+        audit_logger.log(request_id, req.user_input, user_role, req.device_id, req.action,
+                         guard_result, {}, {}, {}, "block", block_reasons)
+        return CommandResponse(
+            request_id=request_id, user_id=req.user_id, user_role=user_role,
+            device_id=req.device_id, action=req.action, final_decision="block",
+            policy_check={"decision": "fail", "reason": "输入安全检测: 中风险"},
+            physical_check={"decision": "pass", "reason": "未执行"},
+            device_state_after=None, block_reasons=block_reasons,
+            message="输入触发安全检测，请使用 /api/smart_command 端点进行人工确认"
+        )
 
     device_type = device_loader.get_device_type(req.device_id)
 
