@@ -60,21 +60,39 @@ class SchemaValidator:
                         f"参数 {pname}={pvalue} 类型错误: 期望 {ptype_str}, 实际 {type(pvalue).__name__}"
                     )
 
-        # 3. 检查数值范围（对照 YAML attributes）
+        # 3. 检查数值范围（对照 YAML attributes，处理 value→attribute 映射）
         for pname, pvalue in params.items():
-            if pname in device.attributes and isinstance(pvalue, (int, float)):
-                attr = device.attributes[pname]
-                if "range" in attr:
-                    lo, hi = attr["range"]
+            if not isinstance(pvalue, (int, float)):
+                continue
+
+            # 先直接匹配属性名
+            if pname in device.attributes:
+                self._check_range(pname, pvalue, device.attributes[pname], errors)
+                continue
+
+            # 通配参数(value) → 查找同类型的数值属性
+            type_hints = {
+                "int": ["brightness", "speed", "position", "count"],
+                "float": ["temperature", "humidity", "pressure"],
+            }
+            for attr_name, attr_cfg in device.attributes.items():
+                if attr_cfg.get("type") in ("int", "float") and "range" in attr_cfg:
+                    lo, hi = attr_cfg["range"]
                     if pvalue < lo or pvalue > hi:
                         errors.append(
-                            f"参数 {pname}={pvalue} 超出范围 [{lo}, {hi}]"
+                            f"参数 {pname}={pvalue} 超出设备限制范围 [{lo}, {hi}]"
                         )
-                if "options" in attr:
-                    if str(pvalue) not in [str(o) for o in attr["options"]]:
-                        errors.append(
-                            f"参数 {pname}={pvalue} 不在允许值 {attr['options']} 中"
-                        )
+                        break  # 一个参数只报告一次
+
+    def _check_range(self, pname: str, pvalue, attr: dict, errors: list):
+        """检查单个参数的值范围"""
+        if "range" in attr:
+            lo, hi = attr["range"]
+            if pvalue < lo or pvalue > hi:
+                errors.append(f"参数 {pname}={pvalue} 超出范围 [{lo}, {hi}]")
+        if "options" in attr:
+            if str(pvalue) not in [str(o) for o in attr["options"]]:
+                errors.append(f"参数 {pname}={pvalue} 不在允许值 {attr['options']} 中")
 
         return len(errors) == 0, errors
 

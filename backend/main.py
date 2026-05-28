@@ -227,6 +227,23 @@ async def process_command(req: CommandRequest, request: Request):
             message=f"设备 {req.device_id} 不存在"
         )
 
+    # 事实校验 — 参数 Schema 检查
+    is_valid, fact_risk, fact_reasons = fact_checker.check(
+        req.device_id, req.action, req.params or {}, user_role
+    )
+    if not is_valid:
+        block_reasons.append(f"事实校验失败: {'; '.join(fact_reasons)}")
+        audit_logger.log(request_id, req.user_input, user_role, req.device_id, req.action,
+                         {}, {"is_valid": False, "reasons": fact_reasons}, {}, {}, "block", block_reasons)
+        return CommandResponse(
+            request_id=request_id, user_id=req.user_id, user_role=user_role,
+            device_id=req.device_id, action=req.action, final_decision="block",
+            policy_check={"decision": "fail", "reason": f"事实校验: {'; '.join(fact_reasons)}"},
+            physical_check={"decision": "pass", "reason": "未执行"},
+            device_state_after=None, block_reasons=block_reasons,
+            message=f"参数校验失败: {'; '.join(fact_reasons)}"
+        )
+
     pd, pr, pr2 = policy_engine.check(user_role, device_type, req.action)
     policy_result = {"decision": pd, "matched_rule": pr, "reason": pr2}
     if pd == "block":
