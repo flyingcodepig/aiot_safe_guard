@@ -124,7 +124,8 @@ app.add_middleware(
 # API Key 认证中间件（纯 ASGI 中间件，与 FastAPI 完全兼容）
 from starlette.responses import JSONResponse
 
-SKIP_AUTH_PATHS = {"/", "/health", "/api/config", "/static"}
+SKIP_AUTH_PREFIXES = ("/static", "/health")
+SKIP_AUTH_EXACT = {"/", "/api/config"}
 
 class APIKeyMiddleware:
     def __init__(self, app):
@@ -136,7 +137,7 @@ class APIKeyMiddleware:
             return
 
         path = scope["path"]
-        if any(path == p or path.startswith(p) for p in SKIP_AUTH_PATHS):
+        if path in SKIP_AUTH_EXACT or path.startswith(SKIP_AUTH_PREFIXES):
             await self.app(scope, receive, send)
             return
 
