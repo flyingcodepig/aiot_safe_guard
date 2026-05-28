@@ -100,11 +100,12 @@ def init_db():
         count INTEGER DEFAULT 1
     )''')
 
-    # 清除旧数据（开发阶段用，保证每次启动数据一致）
-    c.execute("DELETE FROM users")
-    c.execute("DELETE FROM policies")
-    c.execute("DELETE FROM physical_rules")
-    c.execute("DELETE FROM pending_confirmations")
+    # 仅在首次初始化时插入种子数据（已有数据则跳过）
+    c.execute("SELECT COUNT(*) FROM users")
+    if c.fetchone()[0] > 0:
+        conn.commit()
+        conn.close()
+        return
 
     # ---------- 插入默认用户 ----------
     default_users = [
