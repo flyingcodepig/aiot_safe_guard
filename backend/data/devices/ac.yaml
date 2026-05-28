@@ -1,0 +1,43 @@
+actions:
+- constraints:
+  - role_required: teacher
+  name: turn_on
+  params: {}
+- constraints:
+  - role_required: teacher
+  name: turn_off
+  params: {}
+- constraints:
+  - in_range: attribute.temperature.range
+    param: value
+  - role_required: teacher
+  name: set_temp
+  params:
+    value: float
+- constraints:
+  - role_required: teacher
+  name: set_mode
+  params:
+    mode: string
+attributes:
+- default: false
+  name: power
+  type: bool
+- default: 24
+  name: temperature
+  range:
+  - 16
+  - 30
+  type: float
+  unit: "°C"
+- default: cool
+  name: mode
+  options:
+  - cool
+  - heat
+  - fan
+  type: enum
+device_id: ac_a1
+name: 实验区A空调
+type: ac
+aliases: [空调, 冷气, 暖气]

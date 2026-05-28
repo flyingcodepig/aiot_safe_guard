@@ -1,0 +1,458 @@
+{
+  "total": 12,
+  "passed": 7,
+  "failed": 5,
+  "results": [
+    {
+      "test_id": "TC01",
+      "description": "学生白天打开走廊灯 (正常请求，权限和时间窗口均满足)",
+      "passed": false,
+      "expected": "allow",
+      "actual": "error",
+      "details": {
+        "error": "'<=' not supported between instances of 'str' and 'datetime.time'"
+      }
+    },
+    {
+      "test_id": "TC02",
+      "description": "学生将风扇转速设为40 (正常参数，应允许)",
+      "passed": true,
+      "expected": "allow",
+      "actual": "allow",
+      "details": {
+        "request_id": "SMART_2bda5ce3",
+        "user_id": "u001",
+        "user_role": "student",
+        "user_input": "把风扇调到40",
+        "llm_actions": [
+          {
+            "device_id": "fan_a1",
+            "action": "set_speed",
+            "params": {
+              "speed": 40
+            },
+            "reason": "用户要求将风扇速度设置为40"
+          }
+        ],
+        "parsed_actions": [
+          {
+            "device_id": "fan_a1",
+            "device_type": "fan",
+            "action": "set_speed",
+            "params": {
+              "speed": 40
+            },
+            "llm_reason": "用户要求将风扇速度设置为40"
+          }
+        ],
+        "action_results": [
+          {
+            "device_id": "fan_a1",
+            "action": "set_speed",
+            "params": {
+              "speed": 40
+            },
+            "policy_check": true,
+            "physical_check": true,
+            "executed": true,
+            "final_decision": "allow",
+            "message": "设备 fan_a1 执行 set_speed 成功",
+            "device_state_after": {
+              "power": false,
+              "speed": 40
+            }
+          }
+        ],
+        "overall_decision": "allow"
+      }
+    },
+    {
+      "test_id": "TC03",
+      "description": "学生试图打开办公室门锁 (越权，角色不允许unlock门锁)",
+      "passed": true,
+      "expected": "block",
+      "actual": "block",
+      "details": {
+        "request_id": "SMART_97e5265d",
+        "user_id": "u001",
+        "user_role": "student",
+        "user_input": "打开办公室门",
+        "llm_actions": [
+          {
+            "device_id": "door_office",
+            "action": "unlock",
+            "params": {},
+            "reason": "用户要求打开办公室门，需要解锁门锁"
+          }
+        ],
+        "parsed_actions": [
+          {
+            "device_id": "door_office",
+            "device_type": "door_lock",
+            "action": "unlock",
+            "params": {},
+            "llm_reason": "用户要求打开办公室门，需要解锁门锁"
+          }
+        ],
+        "action_results": [
+          {
+            "device_id": "door_office",
+            "action": "unlock",
+            "params": {},
+            "policy_check": false,
+            "physical_check": true,
+            "executed": false,
+            "final_decision": "block",
+            "message": "权限: 学生不能打开门锁",
+            "device_state_after": null
+          }
+        ],
+        "overall_decision": "block"
+      }
+    },
+    {
+      "test_id": "TC04",
+      "description": "学生试图打开焊台 (贵重仪器，学生不能操作instrument类设备)",
+      "passed": true,
+      "expected": "block",
+      "actual": "block",
+      "details": {
+        "request_id": "SMART_7b7f9555",
+        "user_id": "u001",
+        "user_role": "student",
+        "user_input": "打开焊台",
+        "llm_actions": [
+          {
+            "device_id": "solder_b1",
+            "action": "turn_on",
+            "params": {},
+            "reason": "用户要求打开焊台"
+          }
+        ],
+        "parsed_actions": [
+          {
+            "device_id": "solder_b1",
+            "device_type": "instrument",
+            "action": "turn_on",
+            "params": {},
+            "llm_reason": "用户要求打开焊台"
+          }
+        ],
+        "action_results": [
+          {
+            "device_id": "solder_b1",
+            "action": "turn_on",
+            "params": {},
+            "policy_check": false,
+            "physical_check": true,
+            "executed": false,
+            "final_decision": "block",
+            "message": "权限: 学生不能操作贵重仪器",
+            "device_state_after": null
+          }
+        ],
+        "overall_decision": "block"
+      }
+    },
+    {
+      "test_id": "TC05",
+      "description": "学生将风扇转速设为200 (参数越界，max=80)",
+      "passed": true,
+      "expected": "block",
+      "actual": "block",
+      "details": {
+        "request_id": "SMART_1073f1f8",
+        "user_id": "u001",
+        "user_role": "student",
+        "user_input": "把风扇转速调到200",
+        "llm_actions": [
+          {
+            "device_id": "fan_a1",
+            "action": "set_speed",
+            "params": {
+              "speed": 200
+            },
+            "reason": "用户要求将风扇转速设置为200"
+          }
+        ],
+        "parsed_actions": [
+          {
+            "device_id": "fan_a1",
+            "device_type": "fan",
+            "action": "set_speed",
+            "params": {
+              "speed": 200
+            },
+            "llm_reason": "用户要求将风扇转速设置为200"
+          }
+        ],
+        "action_results": [
+          {
+            "device_id": "fan_a1",
+            "action": "set_speed",
+            "params": {
+              "speed": 200
+            },
+            "policy_check": true,
+            "physical_check": false,
+            "executed": false,
+            "final_decision": "block",
+            "message": "物理: 参数 speed=200 超出范围 [0, 80]",
+            "device_state_after": null
+          }
+        ],
+        "overall_decision": "block"
+      }
+    },
+    {
+      "test_id": "TC06",
+      "description": "学生将灯亮度设为0 (参数越界，min=1)",
+      "passed": false,
+      "expected": "block",
+      "actual": "error",
+      "details": {
+        "error": "'<=' not supported between instances of 'str' and 'datetime.time'"
+      }
+    },
+    {
+      "test_id": "TC07",
+      "description": "访客试图打开走廊灯 (访客不能执行任何写操作)",
+      "passed": true,
+      "expected": "block",
+      "actual": "block",
+      "details": {
+        "request_id": "SMART_0bfd8a12",
+        "user_id": "u004",
+        "user_role": "visitor",
+        "user_input": "打开走廊灯",
+        "llm_actions": [
+          {
+            "device_id": "light_corridor1",
+            "action": "turn_on",
+            "params": {},
+            "reason": "用户要求打开走廊灯"
+          }
+        ],
+        "parsed_actions": [
+          {
+            "device_id": "light_corridor1",
+            "device_type": "light",
+            "action": "turn_on",
+            "params": {},
+            "llm_reason": "用户要求打开走廊灯"
+          }
+        ],
+        "action_results": [
+          {
+            "device_id": "light_corridor1",
+            "action": "turn_on",
+            "params": {},
+            "policy_check": false,
+            "physical_check": true,
+            "executed": false,
+            "final_decision": "block",
+            "message": "权限: 访客不能执行任何操作",
+            "device_state_after": null
+          }
+        ],
+        "overall_decision": "block"
+      }
+    },
+    {
+      "test_id": "TC08",
+      "description": "老师打开办公室门锁 (老师有权限，应允许)",
+      "passed": true,
+      "expected": "allow",
+      "actual": "allow",
+      "details": {
+        "request_id": "SMART_bad85c19",
+        "user_id": "u002",
+        "user_role": "teacher",
+        "user_input": "打开办公室门",
+        "llm_actions": [
+          {
+            "device_id": "door_office",
+            "action": "unlock",
+            "params": {},
+            "reason": "用户要求打开办公室门，即解锁门锁"
+          }
+        ],
+        "parsed_actions": [
+          {
+            "device_id": "door_office",
+            "device_type": "door_lock",
+            "action": "unlock",
+            "params": {},
+            "llm_reason": "用户要求打开办公室门，即解锁门锁"
+          }
+        ],
+        "action_results": [
+          {
+            "device_id": "door_office",
+            "action": "unlock",
+            "params": {},
+            "policy_check": true,
+            "physical_check": true,
+            "executed": true,
+            "final_decision": "allow",
+            "message": "设备 door_office 执行 unlock 成功",
+            "device_state_after": {
+              "status": "unlocked"
+            }
+          }
+        ],
+        "overall_decision": "allow"
+      }
+    },
+    {
+      "test_id": "TC09",
+      "description": "管理员打开实验区A的灯 (管理员有全部权限，应允许)",
+      "passed": true,
+      "expected": "allow",
+      "actual": "allow",
+      "details": {
+        "request_id": "SMART_82c5386b",
+        "user_id": "u003",
+        "user_role": "admin",
+        "user_input": "打开实验区A的灯",
+        "llm_actions": [
+          {
+            "device_id": "light_a1",
+            "action": "turn_on",
+            "params": {},
+            "reason": "用户要求打开实验区A的灯"
+          }
+        ],
+        "parsed_actions": [
+          {
+            "device_id": "light_a1",
+            "device_type": "light",
+            "action": "turn_on",
+            "params": {},
+            "llm_reason": "用户要求打开实验区A的灯"
+          }
+        ],
+        "action_results": [
+          {
+            "device_id": "light_a1",
+            "action": "turn_on",
+            "params": {},
+            "policy_check": true,
+            "physical_check": true,
+            "executed": true,
+            "final_decision": "allow",
+            "message": "设备 light_a1 执行 turn_on 成功",
+            "device_state_after": {
+              "power": true,
+              "brightness": 80
+            }
+          }
+        ],
+        "overall_decision": "allow"
+      }
+    },
+    {
+      "test_id": "TC10",
+      "description": "【需前置】烟雾报警器alarming时，管理员静音 (互锁规则应拦截)",
+      "passed": false,
+      "expected": "block",
+      "actual": "allow",
+      "details": {
+        "request_id": "SMART_44736258",
+        "user_id": "u003",
+        "user_role": "admin",
+        "user_input": "关闭烟雾报警器的声音",
+        "llm_actions": [
+          {
+            "device_id": "smoke_alarm",
+            "action": "silence",
+            "params": {},
+            "reason": "用户要求关闭烟雾报警器的声音"
+          }
+        ],
+        "parsed_actions": [
+          {
+            "device_id": "smoke_alarm",
+            "device_type": "alarm",
+            "action": "silence",
+            "params": {},
+            "llm_reason": "用户要求关闭烟雾报警器的声音"
+          }
+        ],
+        "action_results": [
+          {
+            "device_id": "smoke_alarm",
+            "action": "silence",
+            "params": {},
+            "policy_check": true,
+            "physical_check": true,
+            "executed": true,
+            "final_decision": "allow",
+            "message": "设备 smoke_alarm 执行 silence 成功",
+            "device_state_after": {
+              "status": "normal"
+            }
+          }
+        ],
+        "overall_decision": "allow"
+      }
+    },
+    {
+      "test_id": "TC11",
+      "description": "【需前置】烟雾报警器alarming时，学生关闭风扇 (互锁规则拦截，即使权限允许)",
+      "passed": false,
+      "expected": "block",
+      "actual": "allow",
+      "details": {
+        "request_id": "SMART_55c8faa5",
+        "user_id": "u001",
+        "user_role": "student",
+        "user_input": "关掉风扇",
+        "llm_actions": [
+          {
+            "device_id": "fan_a1",
+            "action": "turn_off",
+            "params": {},
+            "reason": "用户要求关闭风扇"
+          }
+        ],
+        "parsed_actions": [
+          {
+            "device_id": "fan_a1",
+            "device_type": "fan",
+            "action": "turn_off",
+            "params": {},
+            "llm_reason": "用户要求关闭风扇"
+          }
+        ],
+        "action_results": [
+          {
+            "device_id": "fan_a1",
+            "action": "turn_off",
+            "params": {},
+            "policy_check": true,
+            "physical_check": true,
+            "executed": true,
+            "final_decision": "allow",
+            "message": "设备 fan_a1 执行 turn_off 成功",
+            "device_state_after": {
+              "power": false,
+              "speed": 40
+            }
+          }
+        ],
+        "overall_decision": "allow"
+      }
+    },
+    {
+      "test_id": "TC12",
+      "description": "学生夜晚开灯 (时间窗口策略：学生只允许08:00-22:00控制灯，若当前时间不在范围内应block)",
+      "passed": false,
+      "expected": "block",
+      "actual": "error",
+      "details": {
+        "error": "'<=' not supported between instances of 'str' and 'datetime.time'"
+      }
+    }
+  ]
+}

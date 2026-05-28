@@ -1,0 +1,19 @@
+actions:
+- constraints:
+  - role_required: teacher
+  name: lock
+  params: {}
+- constraints:
+  - role_required: teacher
+  name: unlock
+  params: {}
+attributes:
+- default: locked
+  name: status
+  options:
+  - locked
+  - unlocked
+  type: enum
+device_id: door_office
+name: 办公室门锁
+type: door_lock

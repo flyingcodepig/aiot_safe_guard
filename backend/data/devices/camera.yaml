@@ -1,0 +1,28 @@
+actions:
+- constraints:
+  - role_required: admin
+  name: turn_on
+  params: {}
+- constraints:
+  - role_required: admin
+  name: turn_off
+  params: {}
+- constraints:
+  - role_required: admin
+  name: start_recording
+  params: {}
+- constraints:
+  - role_required: admin
+  name: stop_recording
+  params: {}
+attributes:
+- default: false
+  name: power
+  type: bool
+- default: false
+  name: recording
+  type: bool
+device_id: camera_01
+name: 办公室摄像头
+type: camera
+aliases: [摄像头, 监控, 相机]

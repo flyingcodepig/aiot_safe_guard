@@ -1,0 +1,30 @@
+actions:
+- constraints:
+  - role_required: teacher
+  name: turn_on
+  params: {}
+- constraints:
+  - role_required: teacher
+  name: turn_off
+  params: {}
+- constraints:
+  - in_range: attribute.temperature.range
+    param: value
+  - role_required: teacher
+  name: set_temp
+  params:
+    value: float
+attributes:
+- default: false
+  name: power
+  type: bool
+- default: 300
+  name: temperature
+  range:
+  - 200
+  - 450
+  type: float
+  unit: °C
+device_id: solder_b1
+name: 恒温焊台B1
+type: instrument

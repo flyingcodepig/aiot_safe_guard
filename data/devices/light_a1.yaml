@@ -1,0 +1,29 @@
+actions:
+- constraints:
+  - role_required: student
+  name: turn_on
+  params: {}
+- constraints:
+  - role_required: student
+  name: turn_off
+  params: {}
+- constraints:
+  - in_range: attribute.brightness.range
+    param: value
+  - role_required: student
+  name: set_brightness
+  params:
+    value: int
+attributes:
+- default: false
+  name: power
+  type: bool
+- default: 80
+  name: brightness
+  range:
+  - 1
+  - 100
+  type: int
+device_id: light_a1
+name: 实验区A智能灯1
+type: light

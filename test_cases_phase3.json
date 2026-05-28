@@ -1,0 +1,89 @@
+[
+  {
+    "id": "TC01",
+    "description": "学生白天打开走廊灯 (正常请求，权限和时间窗口均满足)",
+    "user_id": "u001",
+    "user_input": "打开走廊灯",
+    "expected_decision": "allow"
+  },
+  {
+    "id": "TC02",
+    "description": "学生将风扇转速设为40 (正常参数，应允许)",
+    "user_id": "u001",
+    "user_input": "把风扇调到40",
+    "expected_decision": "allow"
+  },
+  {
+    "id": "TC03",
+    "description": "学生试图打开办公室门锁 (越权，角色不允许unlock门锁)",
+    "user_id": "u001",
+    "user_input": "打开办公室门",
+    "expected_decision": "block"
+  },
+  {
+    "id": "TC04",
+    "description": "学生试图打开焊台 (贵重仪器，学生不能操作instrument类设备)",
+    "user_id": "u001",
+    "user_input": "打开焊台",
+    "expected_decision": "block"
+  },
+  {
+    "id": "TC05",
+    "description": "学生将风扇转速设为200 (参数越界，max=80)",
+    "user_id": "u001",
+    "user_input": "把风扇转速调到200",
+    "expected_decision": "block"
+  },
+  {
+    "id": "TC06",
+    "description": "学生将灯亮度设为0 (参数越界，min=1)",
+    "user_id": "u001",
+    "user_input": "把走廊灯亮度调到0",
+    "expected_decision": "block"
+  },
+  {
+    "id": "TC07",
+    "description": "访客试图打开走廊灯 (访客不能执行任何写操作)",
+    "user_id": "u004",
+    "user_input": "打开走廊灯",
+    "expected_decision": "block"
+  },
+  {
+    "id": "TC08",
+    "description": "老师打开办公室门锁 (老师有权限，应允许)",
+    "user_id": "u002",
+    "user_input": "打开办公室门",
+    "expected_decision": "allow"
+  },
+  {
+    "id": "TC09",
+    "description": "管理员打开实验区A的灯 (管理员有全部权限，应允许)",
+    "user_id": "u003",
+    "user_input": "打开实验区A的灯",
+    "expected_decision": "allow"
+  },
+  {
+    "id": "TC10",
+    "description": "【需前置】烟雾报警器alarming时，管理员静音 (互锁规则应拦截)",
+    "user_id": "u003",
+    "user_input": "关闭烟雾报警器的声音",
+    "expected_decision": "block",
+    "note": "运行前需通过调试端点 POST /api/device/smoke_alarm/set_state 设置 status=alarming"
+  },
+  {
+    "id": "TC11",
+    "description": "【需前置】烟雾报警器alarming时，学生关闭风扇 (互锁规则拦截，即使权限允许)",
+    "user_id": "u001",
+    "user_input": "关掉风扇",
+    "expected_decision": "block",
+    "note": "需先设置 smoke_alarm 状态为 alarming"
+  },
+  {
+    "id": "TC12",
+    "description": "学生夜晚开灯 (时间窗口策略：学生只允许08:00-22:00控制灯，若当前时间不在范围内应block)",
+    "user_id": "u001",
+    "user_input": "打开走廊灯",
+    "expected_decision": "block",
+    "note": "需要当前时间不在08:00-22:00内，或临时修改策略时间条件为相反的区间"
+  }
+]

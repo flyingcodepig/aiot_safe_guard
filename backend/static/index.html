@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智御物联 - 控制台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { font-size: .875rem; background: #f5f7fb; }
+        .sidebar { position: fixed; top: 0; bottom: 0; left: 0; z-index: 100; padding: 48px 0 0; box-shadow: inset -1px 0 0 rgba(0,0,0,.1); }
+        .sidebar .nav-link { font-weight: 500; color: #333; }
+        .sidebar .nav-link.active { color: #0d6efd; }
+        .sidebar .nav-link:hover { color: #0d6efd; }
+        main { padding-top: 48px; }
+        .card { border-radius: 1rem; box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075); }
+        .device-card { transition: all 0.2s; }
+        .device-card:hover { transform: translateY(-2px); box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.1); }
+        pre { white-space: pre-wrap; word-break: break-all; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-dark fixed-top px-3">
+    <span class="navbar-brand mb-0 h1"><i class="bi bi-shield-check"></i> 智御物联</span>
+    <div class="text-white small">AIoT 安全中间件 v4.0</div>
+</nav>
+
+<div class="container-fluid">
+    <div class="row">
+        <nav class="col-md-2 d-md-block bg-light sidebar">
+            <div class="position-sticky">
+                <ul class="nav flex-column mt-3">
+                    <li class="nav-item"><a class="nav-link active" href="#" data-page="dashboard"><i class="bi bi-speedometer2"></i> 仪表板</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#" data-page="devices"><i class="bi bi-cpu"></i> 设备控制</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#" data-page="logs"><i class="bi bi-journal-text"></i> 审计日志</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#" data-page="policies"><i class="bi bi-shield-lock"></i> 权限策略</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#" data-page="rules"><i class="bi bi-cone-striped"></i> 物理规则</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#" data-page="pending"><i class="bi bi-hourglass-split"></i> 待确认 <span id="pending-badge" class="badge bg-warning text-dark d-none">0</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="#" data-page="testing"><i class="bi bi-clipboard-check"></i> 批量测试</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <main class="col-md-10 ms-sm-auto px-md-4">
+            <div id="page-content"></div>
+        </main>
+    </div>
+</div>
+
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="liveToast" class="toast" role="alert"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    const API_BASE = '';
+
+    const pages = {
+        dashboard: renderDashboard,
+        devices: renderDevices,
+        logs: renderLogs,
+        policies: renderPolicies,
+        rules: renderRules,
+        pending: renderPending,
+        testing: renderTesting,
+    };
+
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const page = e.target.closest('a').dataset.page;
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            e.target.closest('a').classList.add('active');
+            pages[page]();
+        });
+    });
+
+    pages.dashboard();
+
+    function showToast(title, msg, type='info') {
+        const toastEl = document.getElementById('liveToast');
+        toastEl.className = `toast align-items-center text-bg-${type} border-0`;
+        toastEl.innerHTML = `<div class="d-flex"><div class="toast-body"><strong>${title}</strong><br>${msg}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+        new bootstrap.Toast(toastEl).show();
+    }
+
+    async function apiGet(url) {
+        const res = await fetch(API_BASE + url);
+        if (!res.ok) throw new Error(`请求失败: ${res.status}`);
+        return res.json();
+    }
+
+    async function apiPost(url, data) {
+        const res = await fetch(API_BASE + url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) throw new Error(`请求失败: ${res.status}`);
+        return res.json();
+    }
+
+    async function apiDelete(url) {
+        const res = await fetch(API_BASE + url, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`删除失败: ${res.status}`);
+        return res.json();
+    }
+
+    let dashboardChart = null;
+
+    // ---------- 仪表板 ----------
+    async function renderDashboard() {
+        const container = document.getElementById('page-content');
+        container.innerHTML = `<h4 class="mt-3"><i class="bi bi-speedometer2"></i> 仪表板 <button class="btn btn-warning btn-sm float-end" onclick="resetSystem()"><i class="bi bi-arrow-counterclockwise"></i> 一键重置</button></h4><div id="dash-content">加载中...</div>`;
+        try {
+            const stats = await apiGet('/api/stats');
+            const logs = await apiGet('/api/logs?limit=5');
+            document.getElementById('dash-content').innerHTML = `
+                <div class="row mt-3">
+                    <div class="col-md-3"><div class="card text-center p-3"><h5>总请求数</h5><h2 class="text-primary">${stats.total}</h2></div></div>
+                    <div class="col-md-3"><div class="card text-center p-3"><h5>已拦截</h5><h2 class="text-danger">${stats.blocked}</h2></div></div>
+                    <div class="col-md-3"><div class="card text-center p-3"><h5>已放行</h5><h2 class="text-success">${stats.allowed}</h2></div></div>
+                    <div class="col-md-3"><div class="card text-center p-3"><h5>待确认</h5><h2 class="text-warning" id="pending-count-dash">-</h2></div></div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6"><div class="card p-3"><h5>拦截/放行分布</h5><canvas id="dash-pie" height="200"></canvas></div></div>
+                    <div class="col-md-6"><div class="card p-3"><h5>近期日志</h5>
+                        <table class="table table-sm">
+                            <thead><tr><th>时间</th><th>用户</th><th>决策</th><th>原因</th></tr></thead>
+                            <tbody>${logs.map(log => `
+                                <tr>
+                                    <td>${new Date(log.timestamp).toLocaleString()}</td>
+                                    <td>${log.user_role}</td>
+                                    <td><span class="badge ${log.final_decision==='allow'?'bg-success':'bg-danger'}">${log.final_decision}</span></td>
+                                    <td><small>${log.block_reasons || '-'}</small></td>
+                                </tr>
+                            `).join('')}</tbody>
+                        </table>
+                    </div></div>
+                </div>`;
+            if (dashboardChart) dashboardChart.destroy();
+            const ctx = document.getElementById('dash-pie').getContext('2d');
+            dashboardChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['放行', '拦截'],
+                    datasets: [{ data: [stats.allowed, stats.blocked], backgroundColor: ['#198754', '#dc3545'] }]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+            });
+            apiGet('/api/pending-confirmations').then(p => {
+                const el = document.getElementById('pending-count-dash');
+                if (el) el.textContent = p.length;
+            }).catch(() => {});
+        } catch(e) { container.innerHTML += `<div class="alert alert-danger">${e.message}</div>`; }
+    }
+    }
+
+    window.resetSystem = async function() {
+        if (!confirm('重置将清空所有日志和设备状态，确定？')) return;
+        try {
+            await apiPost('/api/reset', {});
+            showToast('重置成功', '系统已恢复初始状态', 'success');
+            pages.dashboard();
+        } catch(e) {
+            showToast('重置失败', e.message, 'danger');
+        }
+    };
+
+    let devicesAutoRefresh = null;
+
+    // ---------- 设备控制 ----------
+    async function renderDevices() {
+        const container = document.getElementById('page-content');
+        container.innerHTML = `<h4 class="mt-3"><i class="bi bi-cpu"></i> 设备控制</h4>
+            <div class="card p-3 mb-3">
+                <label class="form-label"><strong>自然语言指令</strong></label>
+                <div class="input-group">
+                    <input type="text" id="cmd-input" class="form-control" placeholder="例如：打开走廊灯，把风扇调到50">
+                    <select id="cmd-user" class="form-select" style="max-width:150px">
+                        <option value="u001">学生 张三</option>
+                        <option value="u002">老师 李四</option>
+                        <option value="u003">管理员 王五</option>
+                        <option value="u004">访客</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="sendCommand()">发送</button>
+                </div>
+                <div id="cmd-result" class="mt-2"></div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5>设备状态</h5>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="auto-refresh-toggle" onchange="toggleAutoRefresh()">
+                    <label class="form-check-label" for="auto-refresh-toggle">自动刷新 (5s)</label>
+                </div>
+            </div>
+            <div id="device-list">加载中...</div>`;
+        loadDeviceList();
+    }
+
+    window.toggleAutoRefresh = function() {
+        const on = document.getElementById('auto-refresh-toggle').checked;
+        if (on) {
+            devicesAutoRefresh = setInterval(loadDeviceList, 5000);
+        } else {
+            if (devicesAutoRefresh) { clearInterval(devicesAutoRefresh); devicesAutoRefresh = null; }
+        }
+    };
+
+    async function loadDeviceList() {
+        try {
+            const data = await apiGet('/api/devices');
+            const devices = data.devices;
+            const html = devices.map(d => {
+                const stateStr = Object.entries(d.state).map(([k,v]) => `${k}: ${v}`).join(', ');
+                return `
+                <div class="col-md-4 mb-3">
+                    <div class="card device-card p-3">
+                        <h6>${d.name} <small class="text-muted">(${d.device_id})</small></h6>
+                        <p class="mb-1"><strong>类型：</strong>${d.type}</p>
+                        <p><strong>状态：</strong>${stateStr || '无'}</p>
+                    </div>
+                </div>`;
+            }).join('');
+            document.getElementById('device-list').innerHTML = `<div class="row">${html}</div>`;
+        } catch(e) { document.getElementById('device-list').innerHTML = `<div class="alert alert-danger">${e.message}</div>`; }
+    }
+
+    window.sendCommand = async function() {
+        const input = document.getElementById('cmd-input').value;
+        const userId = document.getElementById('cmd-user').value;
+        if (!input) return;
+        const resDiv = document.getElementById('cmd-result');
+        resDiv.innerHTML = '<div class="spinner-border spinner-border-sm"></div> 正在处理...';
+        try {
+            const resp = await apiPost('/api/smart_command', { user_id: userId, user_input: input });
+
+            if (resp.require_confirmation) {
+                resDiv.innerHTML = `
+                    <div class="alert alert-warning mt-2">
+                        <strong>需要人工确认</strong>
+                        <p class="mb-2">该请求被标记为中等风险，需要管理员确认后执行。</p>
+                        <button class="btn btn-sm btn-success me-2" onclick="confirmPending('${resp.confirmation_token}', true); this.closest('.alert').remove();">确认执行</button>
+                        <button class="btn btn-sm btn-danger" onclick="confirmPending('${resp.confirmation_token}', false); this.closest('.alert').remove();">拒绝</button>
+                    </div>`;
+                return;
+            }
+
+            const color = resp.overall_decision === 'allow' ? 'success' : 'danger';
+
+            let guardHtml = '';
+            if (resp.input_guard_result) {
+                const g = resp.input_guard_result;
+                guardHtml = `<div class="mb-2"><strong>输入安全检测：</strong>
+                    <span class="badge bg-${g.risk_level === 'high' ? 'danger' : g.risk_level === 'medium' ? 'warning' : 'success'}">${g.risk_level}</span>
+                    ${g.details && g.details.length ? `<small class="text-muted ms-2">${g.details.join(', ')}</small>` : ''}
+                </div>`;
+            }
+
+            let detailHtml = resp.action_results.map(r => `
+                <li class="list-group-item">
+                    <strong>${r.device_id}</strong> ${r.action}
+                    <span class="badge ${r.final_decision==='allow'?'bg-success':'bg-danger'} ms-2">${r.final_decision}</span>
+                    <br><small>${r.message}</small>
+                    ${r.fact_check !== undefined ? `<br><small>事实校验: ${r.fact_check ? '✅ 通过' : '❌ 未通过'}</small>` : ''}
+                </li>`).join('');
+
+            resDiv.innerHTML = `
+                <div class="alert alert-${color} mt-2">
+                    <strong>整体决策：${resp.overall_decision.toUpperCase()}</strong>
+                    ${guardHtml}
+                    <ul class="list-group mt-2">${detailHtml}</ul>
+                </div>`;
+            loadDeviceList();
+        } catch(e) { resDiv.innerHTML = `<div class="alert alert-danger">${e.message}</div>`; }
+    };
+
+    // ---------- 审计日志 ----------
+    async function renderLogs() {
+        const container = document.getElementById('page-content');
+        container.innerHTML = `<h4 class="mt-3"><i class="bi bi-journal-text"></i> 审计日志</h4>
+            <div class="d-flex gap-2 mb-3 flex-wrap">
+                <select id="log-filter-decision" class="form-select" style="width:auto" onchange="loadLogs()">
+                    <option value="">全部决策</option>
+                    <option value="allow">放行</option>
+                    <option value="block">拦截</option>
+                    <option value="require_confirm">待确认</option>
+                </select>
+                <select id="log-filter-role" class="form-select" style="width:auto" onchange="loadLogs()">
+                    <option value="">全部角色</option>
+                    <option value="student">学生</option>
+                    <option value="teacher">老师</option>
+                    <option value="admin">管理员</option>
+                    <option value="visitor">访客</option>
+                </select>
+                <button class="btn btn-sm btn-outline-secondary" onclick="exportLogsCSV()"><i class="bi bi-download"></i> 导出 CSV</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="exportLogsJSON()"><i class="bi bi-download"></i> 导出 JSON</button>
+            </div>
+            <div id="logs-table">加载中...</div>`;
+        await loadLogs();
+    }
+
+    async function loadLogs() {
+        try {
+            const dec = document.getElementById('log-filter-decision')?.value || '';
+            const role = document.getElementById('log-filter-role')?.value || '';
+            const logs = await apiGet('/api/logs?limit=200');
+            let filtered = logs;
+            if (dec) filtered = filtered.filter(l => l.final_decision === dec);
+            if (role) filtered = filtered.filter(l => l.user_role === role);
+            const html = `
+                <table class="table table-striped table-sm">
+                    <thead><tr><th>时间</th><th>请求ID</th><th>用户</th><th>设备</th><th>动作</th><th>决策</th><th>原因</th></tr></thead>
+                    <tbody>${filtered.map(log => `
+                        <tr>
+                            <td>${new Date(log.timestamp).toLocaleString()}</td>
+                            <td>${log.request_id}</td>
+                            <td>${log.user_role}</td>
+                            <td>${log.target_device}</td>
+                            <td>${log.target_action}</td>
+                            <td><span class="badge ${log.final_decision==='allow'?'bg-success':log.final_decision==='require_confirm'?'bg-warning':'bg-danger'}">${log.final_decision}</span></td>
+                            <td><small>${log.block_reasons || '-'}</small></td>
+                        </tr>
+                    `).join('')}</tbody>
+                </table>`;
+            document.getElementById('logs-table').innerHTML = html || '<div class="text-muted">无匹配记录</div>';
+        } catch(e) { document.getElementById('logs-table').innerHTML = `<div class="alert alert-danger">${e.message}</div>`; }
+    }
+
+    window.exportLogsCSV = async function() {
+        const logs = await apiGet('/api/logs?limit=10000');
+        const header = '时间,请求ID,用户,设备,动作,决策,原因\n';
+        const rows = logs.map(l => `${l.timestamp},${l.request_id},${l.user_role},${l.target_device},${l.target_action},${l.final_decision},"${(l.block_reasons||'').replace(/"/g,'""')}"`).join('\n');
+        downloadFile('audit_logs.csv', header + rows, 'text/csv');
+    };
+
+    window.exportLogsJSON = async function() {
+        const logs = await apiGet('/api/logs?limit=10000');
+        downloadFile('audit_logs.json', JSON.stringify(logs, null, 2), 'application/json');
+    };
+
+    function downloadFile(filename, content, type) {
+        const blob = new Blob([content], { type });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+
+    // ---------- 策略管理 ----------
+    async function renderPolicies() {
+        const container = document.getElementById('page-content');
+        container.innerHTML = `<h4 class="mt-3"><i class="bi bi-shield-lock"></i> 权限策略 <button class="btn btn-sm btn-primary float-end" onclick="showPolicyModal()">新增策略</button></h4><div id="policies-list">加载中...</div>`;
+        await loadPolicies();
+    }
+
+    async function loadPolicies() {
+        try {
+            const policies = await apiGet('/api/policies');
+            const html = policies.map(p => `
+                <tr>
+                    <td>${p.id}</td>
+                    <td>${p.role}</td>
+                    <td>${p.device_type}</td>
+                    <td>${p.action_pattern}</td>
+                    <td><span class="badge ${p.decision==='allow'?'bg-success':'bg-danger'}">${p.decision}</span></td>
+                    <td>${p.priority}</td>
+                    <td><small>${p.conditions ? JSON.stringify(p.conditions) : ''}</small></td>
+                    <td><small>${p.description||''}</small></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deletePolicy(${p.id})">删除</button>
+                    </td>
+                </tr>`).join('');
+            document.getElementById('policies-list').innerHTML = `
+                <table class="table table-sm"><thead><tr><th>ID</th><th>角色</th><th>设备类型</th><th>动作</th><th>决策</th><th>优先级</th><th>条件</th><th>描述</th><th></th></tr></thead><tbody>${html}</tbody></table>`;
+        } catch(e) { document.getElementById('policies-list').innerHTML = `<div class="alert alert-danger">${e.message}</div>`; }
+    }
+
+    window.showPolicyModal = function() {
+        const form = `
+            <div class="modal fade" id="policyModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header"><h5>新增策略</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                        <div class="modal-body">
+                            <input id="p-role" placeholder="角色" class="form-control mb-2">
+                            <input id="p-devtype" placeholder="设备类型" class="form-control mb-2">
+                            <input id="p-action" placeholder="动作" class="form-control mb-2">
+                            <select id="p-decision" class="form-select mb-2"><option value="allow">allow</option><option value="block">block</option></select>
+                            <input id="p-priority" type="number" placeholder="优先级" value="0" class="form-control mb-2">
+                            <input id="p-cond" placeholder="条件(JSON,可选)" class="form-control mb-2">
+                            <input id="p-desc" placeholder="描述" class="form-control">
+                        </div>
+                        <div class="modal-footer"><button class="btn btn-primary" onclick="createPolicy()">创建</button></div>
+                    </div>
+                </div>
+            </div>`;
+        document.body.insertAdjacentHTML('beforeend', form);
+        new bootstrap.Modal(document.getElementById('policyModal')).show();
+    };
+
+    window.createPolicy = async function() {
+        const data = {
+            role: document.getElementById('p-role').value,
+            device_type: document.getElementById('p-devtype').value,
+            action_pattern: document.getElementById('p-action').value,
+            decision: document.getElementById('p-decision').value,
+            priority: parseInt(document.getElementById('p-priority').value) || 0,
+            conditions: document.getElementById('p-cond').value || null,
+            description: document.getElementById('p-desc').value
+        };
+        try {
+            await apiPost('/api/policies', data);
+            bootstrap.Modal.getInstance(document.getElementById('policyModal')).hide();
+            loadPolicies();
+        } catch(e) { alert(e.message); }
+    };
+
+    window.deletePolicy = async function(id) {
+        if (!confirm('确定删除?')) return;
+        await apiDelete('/api/policies/' + id);
+        loadPolicies();
+    };
+
+    // ---------- 物理规则 ----------
+    async function renderRules() {
+        const container = document.getElementById('page-content');
+        container.innerHTML = `<h4 class="mt-3"><i class="bi bi-cone-striped"></i> 物理规则 <button class="btn btn-sm btn-primary float-end" onclick="showRuleModal()">新增规则</button></h4><div id="rules-list">加载中...</div>`;
+        await loadRules();
+    }
+
+    async function loadRules() {
+        try {
+            const rules = await apiGet('/api/physical-rules');
+            const html = rules.map(r => `
+                <tr>
+                    <td>${r.id}</td>
+                    <td>${r.device_type}</td>
+                    <td>${r.rule_type}</td>
+                    <td><pre>${r.config}</pre></td>
+                    <td>${r.description||''}</td>
+                    <td><button class="btn btn-sm btn-outline-danger" onclick="deleteRule(${r.id})">删除</button></td>
+                </tr>`).join('');
+            document.getElementById('rules-list').innerHTML = `
+                <table class="table table-sm"><thead><tr><th>ID</th><th>设备类型</th><th>类型</th><th>配置</th><th>描述</th><th></th></tr></thead><tbody>${html}</tbody></table>`;
+        } catch(e) { document.getElementById('rules-list').innerHTML = `<div class="alert alert-danger">${e.message}</div>`; }
+    }
+
+    window.showRuleModal = function() {
+        const form = `
+            <div class="modal fade" id="ruleModal" tabindex="-1">
+                <div class="modal-dialog"><div class="modal-content">
+                    <div class="modal-header"><h5>新增物理规则</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                    <div class="modal-body">
+                        <input id="r-devtype" placeholder="设备类型" class="form-control mb-2">
+                        <select id="r-type" class="form-select mb-2"><option value="range">范围</option><option value="precondition">前置条件</option><option value="interlock">互锁</option><option value="rate_limit">速率限制</option></select>
+                        <textarea id="r-config" placeholder="配置JSON" class="form-control mb-2" rows="4"></textarea>
+                        <input id="r-desc" placeholder="描述" class="form-control">
+                    </div>
+                    <div class="modal-footer"><button class="btn btn-primary" onclick="createRule()">创建</button></div>
+                </div></div>
+            </div>`;
+        document.body.insertAdjacentHTML('beforeend', form);
+        new bootstrap.Modal(document.getElementById('ruleModal')).show();
+    };
+
+    window.createRule = async function() {
+        const data = {
+            device_type: document.getElementById('r-devtype').value,
+            rule_type: document.getElementById('r-type').value,
+            config: document.getElementById('r-config').value,
+            description: document.getElementById('r-desc').value
+        };
+        try {
+            await apiPost('/api/physical-rules', data);
+            bootstrap.Modal.getInstance(document.getElementById('ruleModal')).hide();
+            loadRules();
+        } catch(e) { alert(e.message); }
+    };
+
+    window.deleteRule = async function(id) {
+        if (!confirm('确定删除?')) return;
+        await apiDelete('/api/physical-rules/' + id);
+        loadRules();
+    };
+
+    // ---------- 待确认请求 ----------
+    async function renderPending() {
+        const container = document.getElementById('page-content');
+        container.innerHTML = `<h4 class="mt-3"><i class="bi bi-hourglass-split"></i> 待确认请求</h4><div id="pending-list">加载中...</div>`;
+        await loadPending();
+    }
+
+    async function loadPending() {
+        try {
+            const items = await apiGet('/api/pending-confirmations');
+            const badge = document.getElementById('pending-badge');
+            if (badge) {
+                badge.textContent = items.length;
+                badge.classList.toggle('d-none', items.length === 0);
+            }
+            if (items.length === 0) {
+                document.getElementById('pending-list').innerHTML = '<div class="alert alert-info">暂无待确认请求</div>';
+                return;
+            }
+            document.getElementById('pending-list').innerHTML = `
+                <table class="table table-sm">
+                    <thead><tr><th>时间</th><th>用户</th><th>请求内容</th><th>风险</th><th>操作</th></tr></thead>
+                    <tbody>${items.map(item => `
+                        <tr>
+                            <td>${new Date(item.created_at).toLocaleString()}</td>
+                            <td>${item.user_role}</td>
+                            <td>${item.user_input}</td>
+                            <td><span class="badge bg-warning">medium</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-success" onclick="confirmPending('${item.token}', true)">确认</button>
+                                <button class="btn btn-sm btn-danger" onclick="confirmPending('${item.token}', false)">拒绝</button>
+                            </td>
+                        </tr>`).join('')}</tbody>
+                </table>`;
+        } catch(e) { document.getElementById('pending-list').innerHTML = `<div class="alert alert-danger">${e.message}</div>`; }
+    }
+
+    window.confirmPending = async function(token, confirm) {
+        try {
+            const resp = await apiPost('/api/confirm/' + token, { confirm });
+            showToast(confirm ? '已确认' : '已拒绝', `请求 ${resp.overall_decision}`, confirm ? 'success' : 'warning');
+            loadPending();
+        } catch(e) { showToast('操作失败', e.message, 'danger'); }
+    };
+
+    // ---------- 批量测试 ----------
+    let testChart = null;
+
+    async function renderTesting() {
+        const container = document.getElementById('page-content');
+        container.innerHTML = `
+            <h4 class="mt-3"><i class="bi bi-clipboard-check"></i> 批量测试</h4>
+            <div class="card p-3 mb-3">
+                <input type="file" id="testfile" accept=".json" class="form-control mb-2">
+                <button class="btn btn-success" onclick="runTests()">运行测试</button>
+            </div>
+            <div id="test-result"></div>`;
+    }
+
+    window.runTests = async function() {
+        const fileInput = document.getElementById('testfile');
+        const resDiv = document.getElementById('test-result');
+        if (!fileInput.files.length) return alert('请选择 JSON 文件');
+        const file = fileInput.files[0];
+        resDiv.innerHTML = '<div class="spinner-border"></div> 正在执行测试...';
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+            const res = await fetch(API_BASE + '/api/run_tests', { method: 'POST', body: formData });
+            if (!res.ok) throw new Error('测试请求失败');
+            const data = await res.json();
+            const passRate = data.total > 0 ? (data.passed / data.total * 100).toFixed(1) : 0;
+            resDiv.innerHTML = `
+                <div class="alert alert-info">
+                    总计: ${data.total} | 通过: <span class="text-success">${data.passed}</span> | 失败: <span class="text-danger">${data.failed}</span> | 通过率: <strong>${passRate}%</strong>
+                </div>
+                <div class="row">
+                    <div class="col-md-4"><div class="card p-3"><canvas id="test-pie" height="200"></canvas></div></div>
+                    <div class="col-md-8">
+                        <table class="table table-sm"><thead><tr><th>ID</th><th>描述</th><th>预期</th><th>实际</th><th>结果</th></tr></thead>
+                        <tbody>${data.results.map(r => `
+                            <tr class="${r.passed ? 'table-success' : 'table-danger'}">
+                                <td>${r.test_id}</td>
+                                <td>${r.description}</td>
+                                <td>${r.expected}</td>
+                                <td>${r.actual}</td>
+                                <td>${r.passed ? '✅' : '❌'}</td>
+                            </tr>`).join('')}</tbody></table>
+                    </div>
+                </div>`;
+            if (testChart) testChart.destroy();
+            const ctx = document.getElementById('test-pie').getContext('2d');
+            testChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['通过', '失败'],
+                    datasets: [{ data: [data.passed, data.failed], backgroundColor: ['#198754', '#dc3545'] }]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+            });
+        } catch(e) { resDiv.innerHTML = `<div class="alert alert-danger">${e.message}</div>`; }
+    };
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+actions:
+- constraints:
+  - role_required: visitor
+  name: read
+  params: {}
+- constraints:
+  - role_required: admin
+  name: silence
+  params: {}
+attributes:
+- default: normal
+  name: status
+  options:
+  - normal
+  - alarming
+  type: enum
+device_id: smoke_alarm
+name: 烟雾报警器
+type: alarm

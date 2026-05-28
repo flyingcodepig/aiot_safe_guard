@@ -1,0 +1,30 @@
+actions:
+- constraints:
+  - role_required: student
+  name: turn_on
+  params: {}
+- constraints:
+  - role_required: student
+  name: turn_off
+  params: {}
+- constraints:
+  - in_range: attribute.speed.range
+    param: speed
+  - role_required: student
+  name: set_speed
+  params:
+    speed: int
+attributes:
+- default: false
+  name: power
+  type: bool
+- default: 0
+  name: speed
+  range:
+  - 0
+  - 80
+  type: int
+device_id: fan_a1
+name: 实验区A吊扇1
+type: fan
+aliases: [风扇, 吊扇, 电扇]

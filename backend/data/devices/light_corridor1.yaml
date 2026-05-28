@@ -1,0 +1,28 @@
+device_id: light_corridor1
+name: 走廊灯1
+type: light
+aliases: [走廊灯, 过道灯, 通道灯]
+attributes:
+  - name: power
+    type: bool
+    default: false
+  - name: brightness
+    type: int
+    range: [1, 100]
+    default: 80
+actions:
+  - name: turn_on
+    params: {}
+    constraints:
+      - role_required: student
+  - name: turn_off
+    params: {}
+    constraints:
+      - role_required: student
+  - name: set_brightness
+    params:
+      value: int
+    constraints:
+      - param: value
+        in_range: attribute.brightness.range
+      - role_required: student
