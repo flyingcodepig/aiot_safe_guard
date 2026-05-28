@@ -8,7 +8,7 @@ import os
 import json as json_module
 from typing import List, Dict, Any, Optional
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Body
+from fastapi import FastAPI, HTTPException, UploadFile, File, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -112,7 +112,39 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="智御物联 - AIoT安全中间件", version="4.0.0", lifespan=lifespan)
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+# 配置 CORS
+import config as app_config
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=app_config.CORS_ORIGINS,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# API Key 认证中间件
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
+
+SKIP_AUTH_PATHS = {"/", "/health", "/api/config", "/static"}
+
+class APIKeyMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        path = request.url.path
+        if any(path == p or path.startswith(p) for p in SKIP_AUTH_PATHS):
+            return await call_next(request)
+
+        if not app_config.API_KEY:
+            return await call_next(request)
+
+        api_key = request.headers.get("X-API-Key", "")
+        if api_key != app_config.API_KEY:
+            return JSONResponse(
+                {"detail": "无效的 API Key", "hint": "请在请求头中设置 X-API-Key"},
+                status_code=401,
+            )
+        return await call_next(request)
+
+app.add_middleware(APIKeyMiddleware)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
@@ -132,7 +164,7 @@ async def get_config():
 
 # ---------- 直接命令 ----------
 @app.post("/api/command", response_model=CommandResponse)
-async def process_command(req: CommandRequest):
+async def process_command(req: CommandRequest, request: Request):
     request_id = f"REQ_{uuid.uuid4().hex[:8]}"
     block_reasons = []
     user_role = policy_engine.get_user_role(req.user_id)
@@ -152,17 +184,23 @@ async def process_command(req: CommandRequest):
             message="输入被安全检测拦截"
         )
     if guard_result["risk_level"] == "medium":
-        block_reasons.append("输入安全检测: 中风险，直接命令端点需人工审核")
-        audit_logger.log(request_id, req.user_input, user_role, req.device_id, req.action,
-                         guard_result, {}, {}, {}, "block", block_reasons)
-        return CommandResponse(
-            request_id=request_id, user_id=req.user_id, user_role=user_role,
-            device_id=req.device_id, action=req.action, final_decision="block",
-            policy_check={"decision": "fail", "reason": "输入安全检测: 中风险"},
-            physical_check={"decision": "pass", "reason": "未执行"},
-            device_state_after=None, block_reasons=block_reasons,
-            message="输入触发安全检测，请使用 /api/smart_command 端点进行人工确认"
-        )
+        # 受信客户端（有API Key或开发模式）放行并记录，否则拦截
+        api_key = request.headers.get("X-API-Key", "")
+        is_trusted = not app_config.API_KEY or api_key == app_config.API_KEY
+        if is_trusted:
+            block_reasons.append("输入安全检测: 中风险（受信客户端放行）")
+        else:
+            block_reasons.append("输入安全检测: 中风险，直接命令端点需人工审核")
+            audit_logger.log(request_id, req.user_input, user_role, req.device_id, req.action,
+                             guard_result, {}, {}, {}, "block", block_reasons)
+            return CommandResponse(
+                request_id=request_id, user_id=req.user_id, user_role=user_role,
+                device_id=req.device_id, action=req.action, final_decision="block",
+                policy_check={"decision": "fail", "reason": "输入安全检测: 中风险"},
+                physical_check={"decision": "pass", "reason": "未执行"},
+                device_state_after=None, block_reasons=block_reasons,
+                message="输入触发安全检测，请添加 X-API-Key 请求头或使用 /api/smart_command 端点"
+            )
 
     device_type = device_loader.get_device_type(req.device_id)
 

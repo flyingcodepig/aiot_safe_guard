@@ -26,3 +26,7 @@ SELFCHECK_ENABLED = os.getenv("SELFCHECK_ENABLED", "false").lower() == "true"
 SELFCHECK_METHOD = os.getenv("SELFCHECK_METHOD", "llm_prompt")
 SELFCHECK_THRESHOLD = float(os.getenv("SELFCHECK_THRESHOLD", "0.5"))
 SELFCHECK_SAMPLE_COUNT = int(os.getenv("SELFCHECK_SAMPLE_COUNT", "3"))
+
+# API 认证
+API_KEY = os.getenv("API_KEY", "")
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
