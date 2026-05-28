@@ -169,7 +169,7 @@ async def process_command(req: CommandRequest):
     if pd == "block":
         block_reasons.append(f"权限拒绝: {pr2}")
         audit_logger.log(request_id, req.user_input, user_role, req.device_id, req.action,
-                         {}, {}, policy_result, {}, "block", block_reasons)
+                         guard_result, {}, policy_result, {}, "block", block_reasons)
         return CommandResponse(
             request_id=request_id, user_id=req.user_id, user_role=user_role,
             device_id=req.device_id, action=req.action, final_decision="block",
@@ -183,7 +183,7 @@ async def process_command(req: CommandRequest):
         block_reasons.append(f"物理边界: {phys_reason}")
         alt_msg = f"，建议值为 {safe_alt}" if safe_alt else ""
         audit_logger.log(request_id, req.user_input, user_role, req.device_id, req.action,
-                         {}, {}, policy_result, physical_result, "block", block_reasons)
+                         guard_result, {}, policy_result, physical_result, "block", block_reasons)
         return CommandResponse(
             request_id=request_id, user_id=req.user_id, user_role=user_role,
             device_id=req.device_id, action=req.action, final_decision="block",
@@ -196,7 +196,7 @@ async def process_command(req: CommandRequest):
         block_reasons.append(f"执行失败: {msg}")
     final_decision = "allow" if success else "block"
     audit_logger.log(request_id, req.user_input, user_role, req.device_id, req.action,
-                     {}, {}, policy_result, physical_result, final_decision, block_reasons)
+                     guard_result, {}, policy_result, physical_result, final_decision, block_reasons)
     return CommandResponse(
         request_id=request_id, user_id=req.user_id, user_role=user_role,
         device_id=req.device_id, action=req.action, final_decision=final_decision,
