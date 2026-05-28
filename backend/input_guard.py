@@ -57,13 +57,13 @@ class InputGuard:
         try:
             cn_result = self.chinese_guard.scan(user_input)
             cn_score = cn_result["risk_score"]
-            if cn_score > 0:
-                result["prompt_injection_score"] = max(
-                    result["prompt_injection_score"], cn_score
-                )
+            result["prompt_injection_score"] = max(
+                result["prompt_injection_score"], cn_score
+            )
+            if cn_score >= 0.3:
                 for det in cn_result["pattern_result"].get("detections", []):
                     result["details"].append(
-                        f"中文检测[{det['category']}]: score={det['weight']:.2f}"
+                        f"中文检测[{det.get('category', '?')}]: score={det.get('weight', 0):.2f}"
                     )
                 if cn_result.get("llm_result") and cn_result["llm_result"].get("triggered"):
                     result["details"].append(
