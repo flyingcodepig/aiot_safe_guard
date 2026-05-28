@@ -80,10 +80,10 @@ class InputGuard:
                     result["details"].append(f"包含敏感操作词: {kw}")
                     break
 
-        # 5. 综合风险等级
-        if result["prompt_injection_score"] >= 0.9:
+        # 5. 综合风险等级（与 ChineseGuard 阈值统一: 0.3/0.7）
+        if result["prompt_injection_score"] >= 0.7:
             result["risk_level"] = "high"
-        elif result["prompt_injection_score"] >= 0.5 or result["sensitive_operation"]:
+        elif result["prompt_injection_score"] >= 0.3 or result["sensitive_operation"]:
             result["risk_level"] = "medium"
         else:
             result["risk_level"] = "low"
