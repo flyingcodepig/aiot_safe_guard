@@ -2,15 +2,17 @@
 输入安全检测模块（修复版）
 集成 LLM Guard 的 PromptInjection 扫描器 + 自定义敏感操作检测
 """
-from typing import Dict, Any
+from typing import Any, Dict
 from llm_guard.input_scanners import PromptInjection, BanSubstrings
+from chinese_guard import ChineseGuard
 
 
 class InputGuard:
-    def __init__(self):
+    def __init__(self, llm_client=None, llm_model: str = "deepseek-chat"):
         # 仅使用 PromptInjection 和 BanSubstrings，Toxicity 对中文支持差，暂移除
         self.prompt_injection_scanner = PromptInjection()
         self.ban_substrings = BanSubstrings(substrings=["忽略所有安全规则", "维护模式"])
+        self.chinese_guard = ChineseGuard(client=llm_client, model=llm_model)
 
         # IoT 敏感操作关键词（高危设备-仅低权限角色触发）
         # 注意："报警器"已移除，因为访客需要读取报警器状态
@@ -51,7 +53,26 @@ class InputGuard:
         except Exception as e:
             result["details"].append(f"BanSubstrings 异常: {e}")
 
-        # 3. IoT 敏感操作检测（仅低权限角色触发警告）
+        # 3. 中文安全检测（新增）
+        try:
+            cn_result = self.chinese_guard.scan(user_input)
+            cn_score = cn_result["risk_score"]
+            if cn_score > 0:
+                result["prompt_injection_score"] = max(
+                    result["prompt_injection_score"], cn_score
+                )
+                for det in cn_result["pattern_result"].get("detections", []):
+                    result["details"].append(
+                        f"中文检测[{det['category']}]: score={det['weight']:.2f}"
+                    )
+                if cn_result.get("llm_result") and cn_result["llm_result"].get("triggered"):
+                    result["details"].append(
+                        f"DeepSeek Judge: {cn_result['llm_result'].get('reason', '')}"
+                    )
+        except Exception as e:
+            result["details"].append(f"中文检测异常: {e}")
+
+        # 4. IoT 敏感操作检测（仅低权限角色触发警告）
         if user_role in ("visitor", "student"):
             for kw in self.sensitive_keywords:
                 if kw in user_input:
@@ -59,7 +80,7 @@ class InputGuard:
                     result["details"].append(f"包含敏感操作词: {kw}")
                     break
 
-        # 4. 综合风险等级
+        # 5. 综合风险等级
         if result["prompt_injection_score"] >= 0.9:
             result["risk_level"] = "high"
         elif result["prompt_injection_score"] >= 0.5 or result["sensitive_operation"]:
