@@ -176,17 +176,31 @@ class DeepSeekJudge:
         """
         start = time.monotonic()
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": self.JUDGE_SYSTEM_PROMPT},
-                    {"role": "user", "content": user_input},
-                ],
-                temperature=0.1,
-                max_tokens=200,
-                timeout=self.timeout,
-            )
-            content = response.choices[0].message.content.strip()
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": self.JUDGE_SYSTEM_PROMPT},
+                        {"role": "user", "content": user_input},
+                    ],
+                    temperature=0.1,
+                    max_tokens=200,
+                    timeout=self.timeout,
+                )
+            except TypeError:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": self.JUDGE_SYSTEM_PROMPT},
+                        {"role": "user", "content": user_input},
+                    ],
+                    temperature=0.1,
+                    max_tokens=200,
+                )
+            content = response.choices[0].message.content
+            if not content:
+                raise ValueError("LLM response content is None/empty")
+            content = content.strip()
             elapsed = int((time.monotonic() - start) * 1000)
 
             # 解析 JSON 响应
