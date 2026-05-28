@@ -41,8 +41,9 @@ class FactChecker:
         )
         try:
             _, is_valid, score = self.factual_scanner.scan(context, llm_reason)
-            # 仅当模型判定不一致且分数高于 0.95 时才拦截
-            if not is_valid and score is not None and score > 0.95:
+            # 仅当模型判定不一致且分数高于 0.99 时才拦截
+            # （LLM Guard 英文模型对中文理由存在严重误判，阈值从 0.95 提升至 0.99）
+            if not is_valid and score is not None and score > 0.99:
                 reasons.append(f"理由与设备能力严重不符 (score: {score:.2f})")
                 return False, "fail", reasons
             elif not is_valid:

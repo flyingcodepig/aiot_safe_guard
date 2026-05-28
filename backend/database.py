@@ -133,7 +133,7 @@ def init_db():
         ("teacher", "camera", "*", "block", 100, None, "老师不能操作摄像头"),
         ("teacher", "alarm", "silence", "block", 100, None, "老师不能静音报警器"),
         ("admin", "*", "*", "allow", 100, None, "管理员可以控制所有设备"),
-        ("visitor", "*", "read", "allow", 10, None, "访客只能读取状态"),
+        ("visitor", "*", "read", "allow", 110, None, "访客可以读取任何设备状态（最高优先级）"),
         ("visitor", "*", "*", "block", 100, None, "访客不能执行任何操作"),
     ]
     for policy in default_policies:
