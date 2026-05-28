@@ -90,7 +90,7 @@ async def lifespan(app: FastAPI):
         llm_client=llm_planner.client,
         llm_model=model_name,
     )
-    fact_checker = FactChecker(device_loader)
+    fact_checker = FactChecker(device_loader, llm_client=llm_planner.client, llm_model=model_name)
 
     import config
     if config.SELFCHECK_ENABLED:
