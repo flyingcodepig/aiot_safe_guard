@@ -121,28 +121,40 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# API Key 认证中间件
-from starlette.middleware.base import BaseHTTPMiddleware
+# API Key 认证中间件（纯 ASGI 中间件，与 FastAPI 完全兼容）
 from starlette.responses import JSONResponse
 
 SKIP_AUTH_PATHS = {"/", "/health", "/api/config", "/static"}
 
-class APIKeyMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        path = request.url.path
+class APIKeyMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        path = scope["path"]
         if any(path == p or path.startswith(p) for p in SKIP_AUTH_PATHS):
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
         if not app_config.API_KEY:
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
-        api_key = request.headers.get("X-API-Key", "")
+        headers = dict(scope.get("headers", []))
+        api_key = headers.get(b"x-api-key", b"").decode()
         if api_key != app_config.API_KEY:
-            return JSONResponse(
+            response = JSONResponse(
                 {"detail": "无效的 API Key", "hint": "请在请求头中设置 X-API-Key"},
                 status_code=401,
             )
-        return await call_next(request)
+            await response(scope, receive, send)
+            return
+
+        await self.app(scope, receive, send)
 
 app.add_middleware(APIKeyMiddleware)
 app.mount("/static", StaticFiles(directory="static"), name="static")
