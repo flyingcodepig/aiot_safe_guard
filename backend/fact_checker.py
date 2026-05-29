@@ -250,19 +250,23 @@ class FactChecker:
         self.llm_judge = LLMJudge(client=llm_client, model=llm_model)
 
     def check_intent_consistency(self, user_input: str, device_id: str,
-                                 action: str, llm_reason: str) -> bool:
-        """Layer 0: 快速检查 LLM 动作是否与用户意图一致"""
+                                 action: str, llm_reason: str) -> float:
+        """Layer 0: 返回意图一致性分数 (0.0-1.0)
+        < 0.3 → 不一致，丢弃   0.3-0.7 → 模糊，触发 SelfCheckGPT    > 0.7 → 通过"""
         device = self.device_loader.get_device(device_id)
         if not device or not self.intent_checker.client:
-            return True  # 无法检查时默认为一致
+            return 1.0  # 无法检查时默认为通过
         result = self.intent_checker.check(
             user_input, device.name, device_id, action, llm_reason
         )
-        if result["score"] < 0.3:
+        score = result.get("score", 1.0)
+        if score < 0.3:
             print(f"意图门禁: {device_id}.{action} 与用户意图不一致 "
-                  f"(score={result['score']:.2f}): {result.get('brief', '')}")
-            return False
-        return True
+                  f"(score={score:.2f}): {result.get('brief', '')}")
+        elif score < 0.7:
+            print(f"意图门禁: {device_id}.{action} 模糊区间 (score={score:.2f}), "
+                  f"交由 SelfCheckGPT 深度判断")
+        return score
 
     def check(
         self,

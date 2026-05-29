@@ -339,37 +339,52 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
     raw_actions = llm_planner.plan(user_input)
     parsed_actions = action_parser.parse(raw_actions)
 
-    # SelfCheckGPT 一致性检测
-    if selfcheck_wrapper and raw_actions:
-        sc_result = selfcheck_wrapper.check(
-            user_input, raw_actions, llm_planner.plan,
-            num_samples=3,
-        )
-        if sc_result["risk_score"] >= selfcheck_wrapper.threshold:
-            return SmartCommandResponse(
-                request_id=request_id, user_id=user_id, user_role=user_role,
-                user_input=user_input, llm_actions=raw_actions, parsed_actions=parsed_actions,
-                action_results=[], overall_decision="block",
-                input_guard_result=input_guard_result,
-            )
+    # SelfCheckGPT 保留：仅作为意图门禁的纵深防御，不再独立运行
+    # （原本在此处的无条件 SelfCheckGPT 检查已移除）
 
     # 全局设备门禁：用户输入中若未提及任何已知设备，视为 LLM 幻觉
     if parsed_actions and not device_loader.any_device_mentioned(user_input):
         print(f"设备门禁: 用户未提及任何已知设备，丢弃 {len(parsed_actions)} 个动作")
         parsed_actions = []
 
-    # B02 语义意图门禁：过滤与用户意图不一致的动作（如"播放音乐"→"read"）
+    # B02 语义意图门禁：score < 0.3 丢弃（解决"动作不匹配用户意图"）
     if parsed_actions:
         consistent = []
         for act in parsed_actions:
-            if fact_checker.check_intent_consistency(
+            score = fact_checker.check_intent_consistency(
                 user_input, act["device_id"], act["action"],
                 act.get("llm_reason", "")
-            ):
+            )
+            if score >= 0.3:
                 consistent.append(act)
+            # score < 0.3: 直接丢弃
         if len(consistent) < len(parsed_actions):
             print(f"意图门禁: 丢弃 {len(parsed_actions) - len(consistent)} 个不一致动作")
         parsed_actions = consistent
+
+    # SelfCheckGPT 多采样一致性：仅在意图门禁通过后触发，不一致时标记需确认
+    if selfcheck_wrapper and raw_actions and parsed_actions:
+        sc_result = selfcheck_wrapper.check(
+            user_input, raw_actions, llm_planner.plan, num_samples=2,
+        )
+        if sc_result["risk_score"] >= selfcheck_wrapper.threshold:
+            print(f"SelfCheckGPT: 多采样不一致 (risk={sc_result['risk_score']:.2f})")
+            # 不直接 block，而是返回 require_confirm
+            token = uuid.uuid4().hex
+            conn = get_connection()
+            conn.execute(
+                "INSERT INTO pending_confirmations (token, user_id, user_input, user_role, input_guard_result) VALUES (?,?,?,?,?)",
+                (token, user_id, user_input, user_role, json_module.dumps(input_guard_result))
+            )
+            conn.commit()
+            conn.close()
+            return SmartCommandResponse(
+                request_id=request_id, user_id=user_id, user_role=user_role,
+                user_input=user_input, llm_actions=raw_actions, parsed_actions=parsed_actions,
+                action_results=[], overall_decision="require_confirm",
+                input_guard_result=input_guard_result,
+                require_confirmation=True, confirmation_token=token,
+            )
 
     # LLM 无法识别任何设备/动作时，先用本地关键词匹配兜底
     if not parsed_actions:

@@ -22,7 +22,7 @@ DEVICE_CONFIG_DIR = os.getenv(
 PORT = int(os.getenv("PORT", 8000))
 
 # SelfCheckGPT 配置
-SELFCHECK_ENABLED = os.getenv("SELFCHECK_ENABLED", "false").lower() == "true"
+SELFCHECK_ENABLED = os.getenv("SELFCHECK_ENABLED", "true").lower() == "true"
 SELFCHECK_METHOD = os.getenv("SELFCHECK_METHOD", "llm_prompt")
 SELFCHECK_THRESHOLD = float(os.getenv("SELFCHECK_THRESHOLD", "0.5"))
 SELFCHECK_SAMPLE_COUNT = int(os.getenv("SELFCHECK_SAMPLE_COUNT", "3"))
