@@ -158,7 +158,9 @@ class APIKeyMiddleware:
         await self.app(scope, receive, send)
 
 app.add_middleware(APIKeyMiddleware)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+
+_static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+app.mount("/static", StaticFiles(directory=_static_dir), name="static")
 
 
 # ---------- 基础端点 ----------

@@ -17,14 +17,14 @@ class DeviceCapability:
     def _parse_config(self, config: Dict[str, Any]):
         # 解析属性
         for attr in config.get("attributes", []):
-            self.attributes[attr["name"]] = {
+            attr_data = {
                 "type": attr.get("type", "string"),
                 "access": attr.get("access", "r"),
-                "range": attr.get("range"),
-                "options": attr.get("options"),
-                "unit": attr.get("unit"),
-                "default": attr.get("default"),
             }
+            for key in ("range", "options", "unit", "default"):
+                if attr.get(key) is not None:
+                    attr_data[key] = attr[key]
+            self.attributes[attr["name"]] = attr_data
         # 解析动作
         for action in config.get("actions", []):
             self.actions[action["name"]] = {

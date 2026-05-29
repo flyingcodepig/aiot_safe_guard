@@ -70,19 +70,15 @@ class SchemaValidator:
                 self._check_range(pname, pvalue, device.attributes[pname], errors)
                 continue
 
-            # 通配参数(value) → 查找同类型的数值属性
-            type_hints = {
-                "int": ["brightness", "speed", "position", "count"],
-                "float": ["temperature", "humidity", "pressure"],
-            }
-            for attr_name, attr_cfg in device.attributes.items():
-                if attr_cfg.get("type") in ("int", "float") and "range" in attr_cfg:
-                    lo, hi = attr_cfg["range"]
-                    if pvalue < lo or pvalue > hi:
-                        errors.append(
-                            f"参数 {pname}={pvalue} 超出设备限制范围 [{lo}, {hi}]"
-                        )
-                        break  # 一个参数只报告一次
+            # 通配参数(value) → 通过 action constraints 解析属性映射
+            constraint = device.get_param_constraints(action, pname)
+            if constraint and "in_range" in constraint:
+                # 格式: "attribute.brightness.range" → 提取 "brightness"
+                in_range = constraint["in_range"]
+                if in_range.startswith("attribute."):
+                    parts = in_range.split(".")
+                    if len(parts) >= 3 and parts[1] in device.attributes and parts[2] == "range":
+                        self._check_range(pname, pvalue, device.attributes[parts[1]], errors)
 
         return len(errors) == 0, errors
 
