@@ -92,7 +92,7 @@ class SchemaValidator:
             lo, hi = attr["range"]
             if pvalue < lo or pvalue > hi:
                 errors.append(f"参数 {pname}={pvalue} 超出范围 [{lo}, {hi}]")
-        if "options" in attr:
+        if attr.get("options") is not None:
             if str(pvalue) not in [str(o) for o in attr["options"]]:
                 errors.append(f"参数 {pname}={pvalue} 不在允许值 {attr['options']} 中")
 
