@@ -1,5 +1,6 @@
 """
-事实校验模块 v3 — 三级联级（Plan D）
+事实校验模块 v3 — 四级联级（Plan D + 意图门禁）
+  Layer 0: IntentConsistency — 动作是否匹配用户原始意图 (~200ms)
   Layer 1: SchemaValidator — 参数类型/范围/必填 (0ms, 纯规则)
   Layer 2: SemanticChecker — DeepSeek NLI 轻量 prompt (~200ms)
   Layer 3: LLMJudge — 深度分析 (~500ms, 仅模糊区触发)
@@ -10,6 +11,53 @@ import time
 from typing import Dict, Any, Tuple, List, Optional
 
 from device_loader import DeviceCapabilityLoader
+
+
+class IntentConsistencyChecker:
+    """Layer 0: 验证 LLM 动作是否与用户原始意图一致 — 解决 B02 类问题"""
+
+    PROMPT = """判断设备动作是否符合用户原始意图。
+
+用户输入: "{user_input}"
+设备: {device_name} ({device_id})
+LLM动作: {action}
+LLM理由: "{reason}"
+
+仅输出JSON: {{"consistent": true/false, "score": 0.0-1.0, "brief": "一句话"}}"""
+
+    def __init__(self, client, model: str = "deepseek-chat", timeout: float = 3.0):
+        self.client = client
+        self.model = model
+        self.timeout = timeout
+
+    def check(self, user_input: str, device_name: str, device_id: str,
+              action: str, reason: str) -> Dict[str, Any]:
+        if not self.client:
+            return {"consistent": True, "score": 1.0, "brief": "无LLM客户端，跳过"}
+
+        prompt = self.PROMPT.format(
+            user_input=user_input, device_name=device_name,
+            device_id=device_id, action=action, reason=reason,
+        )
+        try:
+            start = time.monotonic()
+            resp = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.0,
+                max_tokens=80,
+                timeout=self.timeout,
+            )
+            elapsed = int((time.monotonic() - start) * 1000)
+            content = resp.choices[0].message.content
+            if not content:
+                raise ValueError("空响应")
+            result = json.loads(content.strip())
+            result["elapsed_ms"] = elapsed
+            return result
+        except Exception as e:
+            return {"consistent": True, "score": 0.5,
+                    "brief": f"意图检查异常: {e}", "elapsed_ms": 0}
 
 
 class SchemaValidator:
@@ -196,9 +244,25 @@ class FactChecker:
         llm_model: str = "deepseek-chat",
     ):
         self.device_loader = device_loader
+        self.intent_checker = IntentConsistencyChecker(client=llm_client, model=llm_model)
         self.schema_validator = SchemaValidator()
         self.semantic_checker = SemanticChecker(client=llm_client, model=llm_model)
         self.llm_judge = LLMJudge(client=llm_client, model=llm_model)
+
+    def check_intent_consistency(self, user_input: str, device_id: str,
+                                 action: str, llm_reason: str) -> bool:
+        """Layer 0: 快速检查 LLM 动作是否与用户意图一致"""
+        device = self.device_loader.get_device(device_id)
+        if not device or not self.intent_checker.client:
+            return True  # 无法检查时默认为一致
+        result = self.intent_checker.check(
+            user_input, device.name, device_id, action, llm_reason
+        )
+        if result["score"] < 0.3:
+            print(f"意图门禁: {device_id}.{action} 与用户意图不一致 "
+                  f"(score={result['score']:.2f}): {result.get('brief', '')}")
+            return False
+        return True
 
     def check(
         self,

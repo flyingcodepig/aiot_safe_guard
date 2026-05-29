@@ -353,6 +353,24 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
                 input_guard_result=input_guard_result,
             )
 
+    # 全局设备门禁：用户输入中若未提及任何已知设备，视为 LLM 幻觉
+    if parsed_actions and not device_loader.any_device_mentioned(user_input):
+        print(f"设备门禁: 用户未提及任何已知设备，丢弃 {len(parsed_actions)} 个动作")
+        parsed_actions = []
+
+    # B02 语义意图门禁：过滤与用户意图不一致的动作（如"播放音乐"→"read"）
+    if parsed_actions:
+        consistent = []
+        for act in parsed_actions:
+            if fact_checker.check_intent_consistency(
+                user_input, act["device_id"], act["action"],
+                act.get("llm_reason", "")
+            ):
+                consistent.append(act)
+        if len(consistent) < len(parsed_actions):
+            print(f"意图门禁: 丢弃 {len(parsed_actions) - len(consistent)} 个不一致动作")
+        parsed_actions = consistent
+
     # LLM 无法识别任何设备/动作时，先用本地关键词匹配兜底
     if not parsed_actions:
         fallback_actions = fallback_matcher.match(user_input)

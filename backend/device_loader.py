@@ -185,3 +185,19 @@ class DeviceCapabilityLoader:
     def action_supported(self, device_id: str, action: str) -> bool:
         device = self.get_device(device_id)
         return device.supports_action(action) if device else False
+
+    def device_mentioned_in_input(self, device_id: str, user_input: str) -> bool:
+        """检查用户输入是否提到了指定设备（通过 name/aliases/device_id）"""
+        device = self.get_device(device_id)
+        if not device:
+            return False
+        user_lower = user_input.lower()
+        search_terms = [device.name, device_id] + (device.aliases or [])
+        return any(t.lower() in user_lower for t in search_terms if t)
+
+    def any_device_mentioned(self, user_input: str) -> bool:
+        """检查用户输入是否提到了任意已知设备（全局门禁）"""
+        return any(
+            self.device_mentioned_in_input(did, user_input)
+            for did in self.devices
+        )
