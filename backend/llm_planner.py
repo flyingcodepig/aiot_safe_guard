@@ -82,13 +82,20 @@ class LLMPlanner:
         model: str = "deepseek-chat",
         api_key: Optional[str] = None,
         base_url: Optional[str] = None,
+        timeout: float = 10.0,
+        max_retries: int = 0,
+        enabled: bool = True,
     ):
         self.client = OpenAI(
             api_key=api_key,
             base_url=base_url or "https://api.deepseek.com",
+            timeout=timeout,
+            max_retries=max_retries,
         )
         self.model = model
         self.system_prompt = ""
+        self.enabled = enabled
+        self.timeout = timeout
 
     def build_system_prompt(self, device_loader):
         """根据当前设备库构建系统提示词"""
@@ -109,6 +116,9 @@ class LLMPlanner:
         )
 
     def plan(self, user_input: str) -> List[Dict[str, Any]]:
+        if not self.enabled:
+            return []
+
         """将用户输入转换为动作计划列表（含重试+兜底）"""
         if not self.system_prompt:
             raise ValueError("系统提示词未初始化，请先调用 build_system_prompt()")
@@ -144,6 +154,7 @@ class LLMPlanner:
                 messages=messages,
                 temperature=temperature,
                 max_tokens=500,
+                timeout=self.timeout,
             )
             content = response.choices[0].message.content.strip()
             return self._parse_response(content)
@@ -229,13 +240,19 @@ class FallbackMatcher:
         """在用户输入中查找匹配的动作"""
         best_action = None
         best_len = 0
+        best_unsupported_len = 0
         for action_name, keywords in self.ACTION_KEYWORDS.items():
-            if action_name not in device.actions:
-                continue
             for kw in keywords:
-                if kw in user_input and len(kw) > best_len:
+                if kw not in user_input:
+                    continue
+                if action_name not in device.actions:
+                    best_unsupported_len = max(best_unsupported_len, len(kw))
+                    continue
+                if len(kw) > best_len:
                     best_action = action_name
                     best_len = len(kw)
+        if best_unsupported_len > best_len:
+            return None
         return best_action
 
     def _extract_params(self, device, action_name: str, user_input: str) -> dict:

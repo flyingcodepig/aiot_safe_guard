@@ -85,7 +85,14 @@ async def lifespan(app: FastAPI):
     model_name = os.getenv("LLM_MODEL", "deepseek-chat")
     api_key = os.getenv("OPENAI_API_KEY")
     base_url = os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
-    llm_planner = LLMPlanner(model=model_name, api_key=api_key, base_url=base_url)
+    llm_planner = LLMPlanner(
+        model=model_name,
+        api_key=api_key,
+        base_url=base_url,
+        timeout=app_config.LLM_TIMEOUT_SECONDS,
+        max_retries=app_config.LLM_MAX_RETRIES,
+        enabled=app_config.ENABLE_LLM_PLANNER,
+    )
     llm_planner.build_system_prompt(device_loader)
     action_parser = ActionParser(device_loader)
     fallback_matcher = FallbackMatcher(device_loader)
@@ -93,8 +100,14 @@ async def lifespan(app: FastAPI):
     input_guard = InputGuard(
         llm_client=llm_planner.client,
         llm_model=model_name,
+        enable_llm_guard=config.ENABLE_LLM_GUARD_SCANNER,
     )
-    fact_checker = FactChecker(device_loader, llm_client=llm_planner.client, llm_model=model_name)
+    fact_checker = FactChecker(
+        device_loader,
+        llm_client=llm_planner.client,
+        llm_model=model_name,
+        enable_llm_checks=app_config.ENABLE_LLM_FACT_CHECKS,
+    )
 
     if config.SELFCHECK_ENABLED:
         selfcheck_wrapper = SelfCheckWrapper(
@@ -213,6 +226,8 @@ async def get_config():
         "llm_model": os.getenv("LLM_MODEL", "deepseek-chat"),
         "llm_base_url": os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
         "openai_key_set": bool(os.getenv("OPENAI_API_KEY")),
+        "llm_planner_enabled": app_config.ENABLE_LLM_PLANNER,
+        "llm_fact_checks_enabled": app_config.ENABLE_LLM_FACT_CHECKS,
         "safety_layers": SAFETY_LAYER_DEFAULTS,
     }
 
@@ -502,7 +517,7 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
             # 如果是查询/只读类请求，允许通过（无需生成动作）
             read_patterns = ["查看", "查询", "状态", "是多少", "怎么样", "什么", "读", "获取", "显示"]
             is_read_query = any(p in user_input for p in read_patterns)
-            if not is_read_query:
+            if not is_read_query or (safety_layers["device_gate"] and not device_loader.any_device_mentioned(user_input)):
                 audit_logger.log(request_id, user_input, user_role, "", "",
                                  input_guard_result, {"is_valid": False, "reasons": ["LLM 和关键词匹配均无法识别"]},
                                  {}, {}, "block", ["未能识别任何可执行动作"])
@@ -625,6 +640,17 @@ async def process_smart_command(
 
     # medium risk: 需要人工确认
     if input_guard_result["risk_level"] == "medium":
+        if input_guard_result.get("sensitive_operation") and user_role in {"student", "visitor"}:
+            audit_logger.log(request_id, req.user_input, user_role, "", "",
+                             input_guard_result, {}, {}, {}, "block",
+                             ["low-privilege sensitive operation blocked"])
+            return SmartCommandResponse(
+                request_id=request_id, user_id=req.user_id, user_role=user_role,
+                user_input=req.user_input, llm_actions=[], parsed_actions=[],
+                action_results=[], overall_decision="block",
+                input_guard_result=input_guard_result,
+            )
+
         token = uuid.uuid4().hex
         conn = get_connection()
         conn.execute(

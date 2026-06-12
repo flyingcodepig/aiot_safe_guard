@@ -6,3 +6,6 @@ __pycache__/
 llm_guard_src/
 .claude/
 *.pyc
+backend/evaluation/results/*.log
+backend/evaluation/results/*.pid
+backend/evaluation/results/full_eval.json

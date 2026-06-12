@@ -3,15 +3,22 @@
 集成 LLM Guard 的 PromptInjection 扫描器 + 自定义敏感操作检测
 """
 from typing import Any, Dict
-from llm_guard.input_scanners import PromptInjection, BanSubstrings
 from chinese_guard import ChineseGuard
 
 
 class InputGuard:
-    def __init__(self, llm_client=None, llm_model: str = "deepseek-chat"):
+    def __init__(
+        self,
+        llm_client=None,
+        llm_model: str = "deepseek-chat",
+        enable_llm_guard: bool = True,
+    ):
         # 仅使用 PromptInjection 和 BanSubstrings，Toxicity 对中文支持差，暂移除
-        self.prompt_injection_scanner = PromptInjection()
-        self.ban_substrings = BanSubstrings(substrings=["忽略所有安全规则", "维护模式"])
+        self.prompt_injection_scanner = None
+        if enable_llm_guard:
+            from llm_guard.input_scanners import PromptInjection
+            self.prompt_injection_scanner = PromptInjection()
+        self.banned_substrings = ["忽略所有安全规则", "维护模式"]
         self.chinese_guard = ChineseGuard(client=llm_client, model=llm_model)
 
         # IoT 敏感操作关键词（高危设备-仅低权限角色触发）
@@ -30,6 +37,8 @@ class InputGuard:
 
         # 1. LLM Guard 提示注入扫描
         try:
+            if not self.prompt_injection_scanner:
+                raise RuntimeError("LLM Guard scanner disabled")
             _, valid, score = self.prompt_injection_scanner.scan(user_input)
             # score 是风险分数 (0=安全, 1=高风险)？需根据实际返回值调整。
             # 如果 valid 为 True 且 score 接近 1，表示可信度高，风险低。
@@ -46,8 +55,7 @@ class InputGuard:
 
         # 2. 禁止子串（直接匹配高风险）
         try:
-            _, valid, _ = self.ban_substrings.scan(user_input)
-            if not valid:
+            if any(sub in user_input for sub in self.banned_substrings):
                 result["prompt_injection_score"] = 1.0
                 result["details"].append("包含禁止子串")
         except Exception as e:

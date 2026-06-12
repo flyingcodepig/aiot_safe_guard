@@ -242,12 +242,14 @@ class FactChecker:
         device_loader: DeviceCapabilityLoader,
         llm_client=None,
         llm_model: str = "deepseek-chat",
+        enable_llm_checks: bool = True,
     ):
         self.device_loader = device_loader
-        self.intent_checker = IntentConsistencyChecker(client=llm_client, model=llm_model)
+        llm_check_client = llm_client if enable_llm_checks else None
+        self.intent_checker = IntentConsistencyChecker(client=llm_check_client, model=llm_model)
         self.schema_validator = SchemaValidator()
-        self.semantic_checker = SemanticChecker(client=llm_client, model=llm_model)
-        self.llm_judge = LLMJudge(client=llm_client, model=llm_model)
+        self.semantic_checker = SemanticChecker(client=llm_check_client, model=llm_model)
+        self.llm_judge = LLMJudge(client=llm_check_client, model=llm_model)
 
     def check_intent_consistency(self, user_input: str, device_id: str,
                                  action: str, llm_reason: str) -> float:

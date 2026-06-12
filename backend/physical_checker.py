@@ -99,11 +99,11 @@ class PhysicalChecker:
                 row = c2.fetchone()
                 current = row["total"] if row["total"] else 0
                 if current >= max_count:
-                    c2.close()
+                    conn2.close()
                     return "fail", f"速率限制: {scope}={match_id} 的 {action} 在{window_seconds}s内已达{current}次 (上限{max_count})", {}
                 c2.execute("INSERT INTO rate_buckets (device_id, device_type, action, window_start, count) VALUES (?,?,?,?,1)",
                            (device_id, device.type, action, now))
                 conn2.commit()
-                c2.close()
+                conn2.close()
 
         return "pass", "物理检查通过", {}

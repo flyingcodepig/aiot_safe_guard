@@ -20,6 +20,8 @@ def _sqlite_path(database_url: str) -> str:
     path = unquote(parsed.path)
     if parsed.netloc:
         path = f"//{parsed.netloc}{path}"
+    elif path.startswith("/./") or path == "/.":
+        path = path[1:]
     elif path.startswith("/") and len(path) >= 3 and path[2] == ":":
         path = path[1:]
     return os.path.normpath(path)
@@ -28,8 +30,11 @@ def _sqlite_path(database_url: str) -> str:
 DB_PATH = _sqlite_path(config.DATABASE_URL)
 
 def get_connection():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA busy_timeout = 30000")
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 def init_db():

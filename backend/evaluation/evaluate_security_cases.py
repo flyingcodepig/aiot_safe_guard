@@ -53,30 +53,48 @@ def summarize_cases(cases: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def post_json(client: httpx.Client, path: str, payload: dict[str, Any]) -> dict[str, Any]:
-    resp = client.post(path, json=payload)
+def post_json(client: httpx.Client, path: str, payload: dict[str, Any], timeout: float | None = None) -> dict[str, Any]:
+    resp = client.post(path, json=payload, timeout=timeout)
     resp.raise_for_status()
     return resp.json()
 
 
-def run_case(client: httpx.Client, case: dict[str, Any]) -> dict[str, Any]:
-    for setup in case.get("setup", []):
-        post_json(
-            client,
-            f"/api/device/{setup['device_id']}/set_state",
-            {"key": setup["key"], "value": str(setup["value"])},
-        )
+def failed_case(case: dict[str, Any], error: str) -> dict[str, Any]:
+    return {
+        "id": case["id"],
+        "category": case.get("category", "uncategorized"),
+        "expected": case["expected_decision"],
+        "actual": "error",
+        "passed": False,
+        "observed_decisions": ["error"],
+        "error": error,
+        "response": None,
+    }
 
-    repeat = int(case.get("repeat", 1))
-    responses = []
-    for _ in range(max(1, repeat)):
-        responses.append(
+
+def run_case(client: httpx.Client, case: dict[str, Any], request_timeout: float) -> dict[str, Any]:
+    try:
+        for setup in case.get("setup", []):
             post_json(
                 client,
-                "/api/smart_command",
-                {"user_id": case["user_id"], "user_input": case["user_input"]},
+                f"/api/device/{setup['device_id']}/set_state",
+                {"key": setup["key"], "value": str(setup["value"])},
+                timeout=request_timeout,
             )
-        )
+
+        repeat = int(case.get("repeat", 1))
+        responses = []
+        for _ in range(max(1, repeat)):
+            responses.append(
+                post_json(
+                    client,
+                    "/api/smart_command",
+                    {"user_id": case["user_id"], "user_input": case["user_input"]},
+                    timeout=request_timeout,
+                )
+            )
+    except Exception as exc:  # noqa: BLE001 - record per-case evaluation failure
+        return failed_case(case, str(exc))
 
     expected = case["expected_decision"]
     actual = responses[-1].get("overall_decision", "error") if responses else "error"
@@ -117,13 +135,14 @@ def run_suite(
     ablation_name: str,
     disabled_layers: list[str],
     reset_before: bool,
+    request_timeout: float,
 ) -> dict[str, Any]:
     headers = make_headers(api_key=api_key, disabled_layers=disabled_layers)
-    with httpx.Client(base_url=base_url.rstrip("/"), headers=headers, timeout=60.0) as client:
+    with httpx.Client(base_url=base_url.rstrip("/"), headers=headers, timeout=request_timeout) as client:
         if reset_before:
-            resp = client.post("/api/reset")
+            resp = client.post("/api/reset", timeout=request_timeout)
             resp.raise_for_status()
-        results = [run_case(client, case) for case in cases]
+        results = [run_case(client, case, request_timeout) for case in cases]
 
     return {
         "ablation": ablation_name,
@@ -163,6 +182,21 @@ def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def summarize_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "case_file": payload["case_file"],
+        "base_url": payload["base_url"],
+        "suites": [
+            {
+                "ablation": suite["ablation"],
+                "disabled_layers": suite["disabled_layers"],
+                "summary": suite["summary"],
+            }
+            for suite in payload["suites"]
+        ],
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--cases", type=Path, default=DEFAULT_CASES)
@@ -177,6 +211,8 @@ def main() -> int:
         + ", ".join(ABLATION_PROFILES),
     )
     parser.add_argument("--no-reset-before", action="store_true")
+    parser.add_argument("--request-timeout", type=float, default=10.0)
+    parser.add_argument("--summary-only", action="store_true")
     args = parser.parse_args()
 
     cases = load_cases(args.cases)
@@ -196,6 +232,7 @@ def main() -> int:
                 ablation_name=name,
                 disabled_layers=disabled_layers,
                 reset_before=not args.no_reset_before,
+                request_timeout=args.request_timeout,
             )
         )
 
@@ -208,7 +245,10 @@ def main() -> int:
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(text, encoding="utf-8")
-    print(text)
+    if args.summary_only:
+        print(json.dumps(summarize_payload(payload), ensure_ascii=False, indent=2))
+    else:
+        print(text)
     return 0
 
 
