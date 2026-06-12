@@ -27,6 +27,15 @@ SELFCHECK_METHOD = os.getenv("SELFCHECK_METHOD", "llm_prompt")
 SELFCHECK_THRESHOLD = float(os.getenv("SELFCHECK_THRESHOLD", "0.5"))
 SELFCHECK_SAMPLE_COUNT = int(os.getenv("SELFCHECK_SAMPLE_COUNT", "3"))
 
+# Safety layer defaults for ablation experiments.
+ENABLE_INPUT_GUARD = os.getenv("ENABLE_INPUT_GUARD", "true").lower() == "true"
+ENABLE_DEVICE_GATE = os.getenv("ENABLE_DEVICE_GATE", "true").lower() == "true"
+ENABLE_INTENT_GATE = os.getenv("ENABLE_INTENT_GATE", "true").lower() == "true"
+ENABLE_FACT_CHECKER = os.getenv("ENABLE_FACT_CHECKER", "true").lower() == "true"
+ENABLE_POLICY_ENGINE = os.getenv("ENABLE_POLICY_ENGINE", "true").lower() == "true"
+ENABLE_PHYSICAL_CHECKER = os.getenv("ENABLE_PHYSICAL_CHECKER", "true").lower() == "true"
+ENABLE_SELFCHECK_GATE = os.getenv("ENABLE_SELFCHECK_GATE", "true").lower() == "true"
+
 # API 认证
 API_KEY = os.getenv("API_KEY", "")
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")

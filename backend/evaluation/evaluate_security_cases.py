@@ -4,6 +4,7 @@ Usage:
   python evaluation/evaluate_security_cases.py
   python evaluation/evaluate_security_cases.py --base-url http://127.0.0.1:8000 --api-key YOUR_KEY
   python evaluation/evaluate_security_cases.py --base-url http://127.0.0.1:8000 --output results/full.json
+  python evaluation/evaluate_security_cases.py --base-url http://127.0.0.1:8000 --ablation full no_policy_engine
 
 The script is intentionally lightweight: without --base-url it prints dataset
 coverage; with --base-url it executes cases against the running FastAPI app and
@@ -21,6 +22,17 @@ import httpx
 
 
 DEFAULT_CASES = Path(__file__).with_name("security_cases_core.json")
+
+ABLATION_PROFILES = {
+    "full": [],
+    "no_input_guard": ["input_guard"],
+    "no_device_gate": ["device_gate"],
+    "no_intent_gate": ["intent_gate"],
+    "no_fact_checker": ["fact_checker"],
+    "no_policy_engine": ["policy_engine"],
+    "no_physical_checker": ["physical_checker"],
+    "no_selfcheck": ["selfcheck"],
+}
 
 
 def load_cases(path: Path) -> list[dict[str, Any]]:
@@ -80,6 +92,47 @@ def run_case(client: httpx.Client, case: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def make_headers(api_key: str = "", disabled_layers: list[str] | None = None) -> dict[str, str]:
+    headers = {}
+    if api_key:
+        headers["X-API-Key"] = api_key
+    if disabled_layers:
+        headers["X-Ablation-Disable"] = ",".join(disabled_layers)
+    return headers
+
+
+def resolve_ablation(name_or_layers: str) -> tuple[str, list[str]]:
+    if name_or_layers in ABLATION_PROFILES:
+        return name_or_layers, ABLATION_PROFILES[name_or_layers]
+    layers = [part.strip() for part in name_or_layers.split(",") if part.strip()]
+    if not layers:
+        raise ValueError(f"empty ablation profile: {name_or_layers}")
+    return name_or_layers, layers
+
+
+def run_suite(
+    base_url: str,
+    api_key: str,
+    cases: list[dict[str, Any]],
+    ablation_name: str,
+    disabled_layers: list[str],
+    reset_before: bool,
+) -> dict[str, Any]:
+    headers = make_headers(api_key=api_key, disabled_layers=disabled_layers)
+    with httpx.Client(base_url=base_url.rstrip("/"), headers=headers, timeout=60.0) as client:
+        if reset_before:
+            resp = client.post("/api/reset")
+            resp.raise_for_status()
+        results = [run_case(client, case) for case in cases]
+
+    return {
+        "ablation": ablation_name,
+        "disabled_layers": disabled_layers,
+        "summary": summarize_results(results),
+        "results": results,
+    }
+
+
 def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
     category_totals: dict[str, int] = defaultdict(int)
     category_passed: dict[str, int] = defaultdict(int)
@@ -116,6 +169,14 @@ def main() -> int:
     parser.add_argument("--base-url", help="Running backend URL, e.g. http://127.0.0.1:8000")
     parser.add_argument("--api-key", default="")
     parser.add_argument("--output", type=Path)
+    parser.add_argument(
+        "--ablation",
+        nargs="*",
+        default=["full"],
+        help="Ablation profile names or comma-separated layer lists. Known: "
+        + ", ".join(ABLATION_PROFILES),
+    )
+    parser.add_argument("--no-reset-before", action="store_true")
     args = parser.parse_args()
 
     cases = load_cases(args.cases)
@@ -124,15 +185,24 @@ def main() -> int:
         print("Pass --base-url to execute these cases against a running backend.")
         return 0
 
-    headers = {"X-API-Key": args.api_key} if args.api_key else {}
-    with httpx.Client(base_url=args.base_url.rstrip("/"), headers=headers, timeout=60.0) as client:
-        results = [run_case(client, case) for case in cases]
+    suites = []
+    for profile in args.ablation:
+        name, disabled_layers = resolve_ablation(profile)
+        suites.append(
+            run_suite(
+                base_url=args.base_url,
+                api_key=args.api_key,
+                cases=cases,
+                ablation_name=name,
+                disabled_layers=disabled_layers,
+                reset_before=not args.no_reset_before,
+            )
+        )
 
     payload = {
         "case_file": str(args.cases),
         "base_url": args.base_url,
-        "summary": summarize_results(results),
-        "results": results,
+        "suites": suites,
     }
     text = json.dumps(payload, ensure_ascii=False, indent=2)
     if args.output:

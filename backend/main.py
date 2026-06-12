@@ -124,6 +124,42 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+SAFETY_LAYER_NAMES = {
+    "input_guard",
+    "device_gate",
+    "intent_gate",
+    "fact_checker",
+    "policy_engine",
+    "physical_checker",
+    "selfcheck",
+}
+
+SAFETY_LAYER_DEFAULTS = {
+    "input_guard": app_config.ENABLE_INPUT_GUARD,
+    "device_gate": app_config.ENABLE_DEVICE_GATE,
+    "intent_gate": app_config.ENABLE_INTENT_GATE,
+    "fact_checker": app_config.ENABLE_FACT_CHECKER,
+    "policy_engine": app_config.ENABLE_POLICY_ENGINE,
+    "physical_checker": app_config.ENABLE_PHYSICAL_CHECKER,
+    "selfcheck": app_config.ENABLE_SELFCHECK_GATE,
+}
+
+
+def get_safety_layers(request: Optional[Request] = None) -> Dict[str, bool]:
+    layers = dict(SAFETY_LAYER_DEFAULTS)
+    if request is None:
+        return layers
+
+    disabled = request.headers.get("X-Ablation-Disable", "")
+    for name in [part.strip() for part in disabled.split(",") if part.strip()]:
+        if name in SAFETY_LAYER_NAMES:
+            layers[name] = False
+    return layers
+
+
+def disabled_layers(layers: Dict[str, bool]) -> List[str]:
+    return [name for name, enabled in sorted(layers.items()) if not enabled]
+
 # API Key 认证中间件（纯 ASGI 中间件，与 FastAPI 完全兼容）
 from starlette.responses import JSONResponse
 
@@ -177,6 +213,16 @@ async def get_config():
         "llm_model": os.getenv("LLM_MODEL", "deepseek-chat"),
         "llm_base_url": os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
         "openai_key_set": bool(os.getenv("OPENAI_API_KEY")),
+        "safety_layers": SAFETY_LAYER_DEFAULTS,
+    }
+
+@app.get("/api/ablation/config")
+async def get_ablation_config():
+    return {
+        "layers": sorted(SAFETY_LAYER_NAMES),
+        "defaults": SAFETY_LAYER_DEFAULTS,
+        "request_header": "X-Ablation-Disable",
+        "example": "X-Ablation-Disable: input_guard,fact_checker",
     }
 
 @app.get("/health")
@@ -394,7 +440,9 @@ async def llm_plan(user_input: str):
 # ---------- 管道执行器（可复用） ----------
 async def execute_smart_pipeline(user_id: str, user_input: str,
                                   request_id: str, user_role: str,
-                                  input_guard_result: dict) -> SmartCommandResponse:
+                                  input_guard_result: dict,
+                                  safety_layers: Optional[Dict[str, bool]] = None) -> SmartCommandResponse:
+    safety_layers = safety_layers or get_safety_layers()
     raw_actions = llm_planner.plan(user_input)
     parsed_actions = action_parser.parse(raw_actions)
 
@@ -402,12 +450,12 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
     # （原本在此处的无条件 SelfCheckGPT 检查已移除）
 
     # 全局设备门禁：用户输入中若未提及任何已知设备，视为 LLM 幻觉
-    if parsed_actions and not device_loader.any_device_mentioned(user_input):
+    if safety_layers["device_gate"] and parsed_actions and not device_loader.any_device_mentioned(user_input):
         print(f"设备门禁: 用户未提及任何已知设备，丢弃 {len(parsed_actions)} 个动作")
         parsed_actions = []
 
     # B02 语义意图门禁：score < 0.3 丢弃（解决"动作不匹配用户意图"）
-    if parsed_actions:
+    if safety_layers["intent_gate"] and parsed_actions:
         consistent = []
         for act in parsed_actions:
             score = fact_checker.check_intent_consistency(
@@ -422,7 +470,7 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
         parsed_actions = consistent
 
     # SelfCheckGPT 多采样一致性：仅在意图门禁通过后触发，不一致时标记需确认
-    if selfcheck_wrapper and raw_actions and parsed_actions:
+    if safety_layers["selfcheck"] and selfcheck_wrapper and raw_actions and parsed_actions:
         sc_result = selfcheck_wrapper.check(
             user_input, raw_actions, llm_planner.plan, num_samples=app_config.SELFCHECK_SAMPLE_COUNT,
         )
@@ -478,9 +526,12 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
         msg = ""
         new_state = None
 
-        is_valid, fact_risk, fact_reasons = fact_checker.check(
-            device_id, action, params, user_role, llm_reason
-        )
+        if safety_layers["fact_checker"]:
+            is_valid, fact_risk, fact_reasons = fact_checker.check(
+                device_id, action, params, user_role, llm_reason
+            )
+        else:
+            is_valid, fact_risk, fact_reasons = True, "skipped", ["fact_checker disabled"]
         if not is_valid:
             msg = f"事实校验失败: {'; '.join(fact_reasons)}"
             all_passed = False
@@ -495,9 +546,15 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
             })
             continue
 
-        pd, pr_id, pr_reason = policy_engine.check(user_role, device_type, action)
+        if safety_layers["policy_engine"]:
+            pd, pr_id, pr_reason = policy_engine.check(user_role, device_type, action)
+        else:
+            pd, pr_id, pr_reason = "allow", "ablation_skip", "policy_engine disabled"
         policy_pass = pd == "allow"
-        phys_decision, phys_reason, safe_alt = physical_checker.check(device_id, action, params)
+        if safety_layers["physical_checker"]:
+            phys_decision, phys_reason, safe_alt = physical_checker.check(device_id, action, params)
+        else:
+            phys_decision, phys_reason, safe_alt = "pass", "physical_checker disabled", {}
         phys_pass = phys_decision == "pass"
 
         if policy_pass and phys_pass:
@@ -535,11 +592,24 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
 
 
 # ---------- 智能命令核心 ----------
-async def process_smart_command(req: SmartCommandRequest) -> SmartCommandResponse:
+async def process_smart_command(
+    req: SmartCommandRequest,
+    safety_layers: Optional[Dict[str, bool]] = None,
+) -> SmartCommandResponse:
+    safety_layers = safety_layers or get_safety_layers()
     request_id = f"SMART_{uuid.uuid4().hex[:8]}"
     user_role = policy_engine.get_user_role(req.user_id)
 
-    input_guard_result = input_guard.scan(req.user_input, user_role)
+    if safety_layers["input_guard"]:
+        input_guard_result = input_guard.scan(req.user_input, user_role)
+    else:
+        input_guard_result = {
+            "prompt_injection_score": 0.0,
+            "sensitive_operation": False,
+            "risk_level": "low",
+            "details": ["input_guard disabled"],
+        }
+    input_guard_result["disabled_layers"] = disabled_layers(safety_layers)
 
     # high risk: 直接拒绝
     if input_guard_result["risk_level"] == "high":
@@ -572,12 +642,12 @@ async def process_smart_command(req: SmartCommandRequest) -> SmartCommandRespons
         )
 
     return await execute_smart_pipeline(req.user_id, req.user_input, request_id,
-                                        user_role, input_guard_result)
+                                        user_role, input_guard_result, safety_layers)
 
 
 @app.post("/api/smart_command", response_model=SmartCommandResponse)
-async def smart_command(req: SmartCommandRequest):
-    return await process_smart_command(req)
+async def smart_command(req: SmartCommandRequest, request: Request):
+    return await process_smart_command(req, get_safety_layers(request))
 
 
 # ---------- 人工确认 ----------
