@@ -3,12 +3,14 @@
 FastAPI 主入口 (阶段4: 集成输入安全检测 + 事实校验)
 """
 from contextlib import asynccontextmanager
+import csv
+import io
 import uuid
 import os
 import json as json_module
 from typing import List, Dict, Any, Optional
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Body, Request
+from fastapi import FastAPI, HTTPException, UploadFile, File, Body, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -72,7 +74,9 @@ async def lifespan(app: FastAPI):
     global device_loader, sandbox, policy_engine, physical_checker, audit_logger
     global llm_planner, action_parser, fallback_matcher, input_guard, fact_checker, selfcheck_wrapper
 
-    device_loader = DeviceCapabilityLoader(os.getenv("DEVICE_CONFIG_DIR", "./data/devices"))
+    import config
+
+    device_loader = DeviceCapabilityLoader(config.DEVICE_CONFIG_DIR)
     sandbox = SandboxEngine(device_loader)
     policy_engine = PolicyEngine()
     physical_checker = PhysicalChecker(device_loader, sandbox)
@@ -92,7 +96,6 @@ async def lifespan(app: FastAPI):
     )
     fact_checker = FactChecker(device_loader, llm_client=llm_planner.client, llm_model=model_name)
 
-    import config
     if config.SELFCHECK_ENABLED:
         selfcheck_wrapper = SelfCheckWrapper(
             method=config.SELFCHECK_METHOD,
@@ -174,6 +177,25 @@ async def get_config():
         "llm_model": os.getenv("LLM_MODEL", "deepseek-chat"),
         "llm_base_url": os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
         "openai_key_set": bool(os.getenv("OPENAI_API_KEY")),
+    }
+
+@app.get("/health")
+async def health_check():
+    try:
+        conn = get_connection()
+        conn.execute("SELECT 1")
+        conn.close()
+        db_status = "ok"
+    except Exception as exc:
+        db_status = f"error: {exc}"
+
+    loaded_devices = len(getattr(device_loader, "devices", {})) if "device_loader" in globals() else 0
+    status = "ok" if db_status == "ok" and loaded_devices > 0 else "degraded"
+    return {
+        "status": status,
+        "database": db_status,
+        "loaded_devices": loaded_devices,
+        "version": "4.0.0",
     }
 
 
@@ -320,8 +342,45 @@ async def get_stats():
     return audit_logger.get_stats()
 
 @app.get("/api/logs")
-async def get_logs(limit: int = 50):
-    return audit_logger.get_recent_logs(limit)
+async def get_logs(limit: int = 50, final_decision: Optional[str] = None, user_role: Optional[str] = None):
+    safe_limit = max(1, min(limit, 10000))
+    return audit_logger.get_recent_logs(safe_limit, final_decision=final_decision, user_role=user_role)
+
+@app.get("/api/logs/export")
+async def export_logs(
+    format: str = "json",
+    limit: int = 10000,
+    final_decision: Optional[str] = None,
+    user_role: Optional[str] = None,
+):
+    safe_limit = max(1, min(limit, 10000))
+    logs = audit_logger.get_recent_logs(safe_limit, final_decision=final_decision, user_role=user_role)
+    export_format = format.lower()
+
+    if export_format == "json":
+        body = json_module.dumps(logs, ensure_ascii=False, indent=2)
+        return Response(
+            content=body,
+            media_type="application/json",
+            headers={"Content-Disposition": "attachment; filename=audit_logs.json"},
+        )
+
+    if export_format == "csv":
+        output = io.StringIO()
+        fieldnames = [
+            "timestamp", "request_id", "user_role", "target_device", "target_action",
+            "final_decision", "block_reasons", "user_input",
+        ]
+        writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(logs)
+        return Response(
+            content=output.getvalue(),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": "attachment; filename=audit_logs.csv"},
+        )
+
+    raise HTTPException(status_code=400, detail="format must be csv or json")
 
 
 # ---------- LLM 规划 ----------
@@ -365,7 +424,7 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
     # SelfCheckGPT 多采样一致性：仅在意图门禁通过后触发，不一致时标记需确认
     if selfcheck_wrapper and raw_actions and parsed_actions:
         sc_result = selfcheck_wrapper.check(
-            user_input, raw_actions, llm_planner.plan, num_samples=2,
+            user_input, raw_actions, llm_planner.plan, num_samples=app_config.SELFCHECK_SAMPLE_COUNT,
         )
         if sc_result["risk_score"] >= selfcheck_wrapper.threshold:
             print(f"SelfCheckGPT: 多采样不一致 (risk={sc_result['risk_score']:.2f})")

@@ -14,7 +14,7 @@ COPY data/ /app/data/
 
 WORKDIR /app/backend
 
-RUN python modelload.py || echo "LLM Guard 模型将在首次请求时下载"
+RUN python modelload.py || echo "LLM Guard model will be downloaded on first request"
 
 ENV ENVIRONMENT=docker
 

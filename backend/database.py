@@ -1,9 +1,31 @@
 """数据库初始化与基本操作 - 阶段3增强版"""
-import sqlite3
 import json
+import os
+import sqlite3
+from urllib.parse import unquote, urlparse
+
+import config
 
 
-DB_PATH = "aiot_guard.db"
+def _sqlite_path(database_url: str) -> str:
+    if not database_url:
+        return "aiot_guard.db"
+    if not database_url.startswith("sqlite:"):
+        raise ValueError("Only sqlite DATABASE_URL values are supported")
+
+    parsed = urlparse(database_url)
+    if parsed.path in ("", "/"):
+        return "aiot_guard.db"
+
+    path = unquote(parsed.path)
+    if parsed.netloc:
+        path = f"//{parsed.netloc}{path}"
+    elif path.startswith("/") and len(path) >= 3 and path[2] == ":":
+        path = path[1:]
+    return os.path.normpath(path)
+
+
+DB_PATH = _sqlite_path(config.DATABASE_URL)
 
 def get_connection():
     conn = sqlite3.connect(DB_PATH)

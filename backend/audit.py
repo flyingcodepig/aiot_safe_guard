@@ -38,11 +38,25 @@ class AuditLogger:
         conn.commit()
         conn.close()
 
-    def get_recent_logs(self, limit: int = 50):
+    def get_recent_logs(self, limit: int = 50, final_decision: str = None, user_role: str = None):
         """获取最近的审计日志"""
         conn = get_connection()
         c = conn.cursor()
-        c.execute("SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT ?", (limit,))
+        clauses = []
+        params = []
+        if final_decision:
+            clauses.append("final_decision = ?")
+            params.append(final_decision)
+        if user_role:
+            clauses.append("user_role = ?")
+            params.append(user_role)
+
+        where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        c.execute(
+            f"SELECT * FROM audit_logs {where_sql} ORDER BY timestamp DESC LIMIT ?",
+            params,
+        )
         rows = c.fetchall()
         conn.close()
         return [dict(row) for row in rows]

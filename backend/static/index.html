@@ -156,7 +156,6 @@
             }).catch(() => {});
         } catch(e) { container.innerHTML += `<div class="alert alert-danger">${e.message}</div>`; }
     }
-    }
 
     window.resetSystem = async function() {
         if (!confirm('重置将清空所有日志和设备状态，确定？')) return;
@@ -306,10 +305,10 @@
         try {
             const dec = document.getElementById('log-filter-decision')?.value || '';
             const role = document.getElementById('log-filter-role')?.value || '';
-            const logs = await apiGet('/api/logs?limit=200');
-            let filtered = logs;
-            if (dec) filtered = filtered.filter(l => l.final_decision === dec);
-            if (role) filtered = filtered.filter(l => l.user_role === role);
+            const qs = new URLSearchParams({ limit: '200' });
+            if (dec) qs.set('final_decision', dec);
+            if (role) qs.set('user_role', role);
+            const filtered = await apiGet('/api/logs?' + qs.toString());
             const html = `
                 <table class="table table-striped table-sm">
                     <thead><tr><th>时间</th><th>请求ID</th><th>用户</th><th>设备</th><th>动作</th><th>决策</th><th>原因</th></tr></thead>
@@ -330,16 +329,32 @@
     }
 
     window.exportLogsCSV = async function() {
-        const logs = await apiGet('/api/logs?limit=10000');
-        const header = '时间,请求ID,用户,设备,动作,决策,原因\n';
-        const rows = logs.map(l => `${l.timestamp},${l.request_id},${l.user_role},${l.target_device},${l.target_action},${l.final_decision},"${(l.block_reasons||'').replace(/"/g,'""')}"`).join('\n');
-        downloadFile('audit_logs.csv', header + rows, 'text/csv');
+        return downloadLogExport('csv');
     };
 
     window.exportLogsJSON = async function() {
-        const logs = await apiGet('/api/logs?limit=10000');
-        downloadFile('audit_logs.json', JSON.stringify(logs, null, 2), 'application/json');
+        return downloadLogExport('json');
     };
+
+    async function downloadLogExport(format) {
+        const dec = document.getElementById('log-filter-decision')?.value || '';
+        const role = document.getElementById('log-filter-role')?.value || '';
+        const qs = new URLSearchParams({ format, limit: '10000' });
+        if (dec) qs.set('final_decision', dec);
+        if (role) qs.set('user_role', role);
+        const res = await fetch(API_BASE + '/api/logs/export?' + qs.toString());
+        if (!res.ok) throw new Error('export failed');
+        const blob = await res.blob();
+        downloadBlob(`audit_logs.${format === 'csv' ? 'csv' : 'json'}`, blob);
+    }
+
+    function downloadBlob(filename, blob) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
 
     function downloadFile(filename, content, type) {
         const blob = new Blob([content], { type });
@@ -371,6 +386,7 @@
                     <td><small>${p.conditions ? JSON.stringify(p.conditions) : ''}</small></td>
                     <td><small>${p.description||''}</small></td>
                     <td>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick='showPolicyModal(JSON.parse(decodeURIComponent("${encodeURIComponent(JSON.stringify(p))}")))'>编辑</button>
                         <button class="btn btn-sm btn-outline-danger" onclick="deletePolicy(${p.id})">删除</button>
                     </td>
                 </tr>`).join('');
@@ -379,7 +395,8 @@
         } catch(e) { document.getElementById('policies-list').innerHTML = `<div class="alert alert-danger">${e.message}</div>`; }
     }
 
-    window.showPolicyModal = function() {
+    window.showPolicyModal = function(policy = null) {
+        document.getElementById('policyModal')?.remove();
         const form = `
             <div class="modal fade" id="policyModal" tabindex="-1">
                 <div class="modal-dialog">
@@ -399,10 +416,22 @@
                 </div>
             </div>`;
         document.body.insertAdjacentHTML('beforeend', form);
+        if (policy) {
+            document.getElementById('p-role').value = policy.role || '';
+            document.getElementById('p-devtype').value = policy.device_type || '';
+            document.getElementById('p-action').value = policy.action_pattern || '';
+            document.getElementById('p-decision').value = policy.decision || 'allow';
+            document.getElementById('p-priority').value = policy.priority ?? 0;
+            document.getElementById('p-cond').value = policy.conditions || '';
+            document.getElementById('p-desc').value = policy.description || '';
+        }
+        const saveButton = document.querySelector('#policyModal .modal-footer button');
+        saveButton.textContent = policy ? '保存' : saveButton.textContent;
+        saveButton.onclick = () => window.savePolicy(policy?.id || null);
         new bootstrap.Modal(document.getElementById('policyModal')).show();
     };
 
-    window.createPolicy = async function() {
+    window.savePolicy = async function(id = null) {
         const data = {
             role: document.getElementById('p-role').value,
             device_type: document.getElementById('p-devtype').value,
@@ -413,11 +442,22 @@
             description: document.getElementById('p-desc').value
         };
         try {
-            await apiPost('/api/policies', data);
+            if (id) {
+                const res = await fetch(API_BASE + '/api/policies/' + id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!res.ok) throw new Error('update failed');
+            } else {
+                await apiPost('/api/policies', data);
+            }
             bootstrap.Modal.getInstance(document.getElementById('policyModal')).hide();
             loadPolicies();
         } catch(e) { alert(e.message); }
     };
+
+    window.createPolicy = () => window.savePolicy(null);
 
     window.deletePolicy = async function(id) {
         if (!confirm('确定删除?')) return;
@@ -442,14 +482,18 @@
                     <td>${r.rule_type}</td>
                     <td><pre>${r.config}</pre></td>
                     <td>${r.description||''}</td>
-                    <td><button class="btn btn-sm btn-outline-danger" onclick="deleteRule(${r.id})">删除</button></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick='showRuleModal(JSON.parse(decodeURIComponent("${encodeURIComponent(JSON.stringify(r))}")))'>编辑</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteRule(${r.id})">删除</button>
+                    </td>
                 </tr>`).join('');
             document.getElementById('rules-list').innerHTML = `
                 <table class="table table-sm"><thead><tr><th>ID</th><th>设备类型</th><th>类型</th><th>配置</th><th>描述</th><th></th></tr></thead><tbody>${html}</tbody></table>`;
         } catch(e) { document.getElementById('rules-list').innerHTML = `<div class="alert alert-danger">${e.message}</div>`; }
     }
 
-    window.showRuleModal = function() {
+    window.showRuleModal = function(rule = null) {
+        document.getElementById('ruleModal')?.remove();
         const form = `
             <div class="modal fade" id="ruleModal" tabindex="-1">
                 <div class="modal-dialog"><div class="modal-content">
@@ -464,10 +508,19 @@
                 </div></div>
             </div>`;
         document.body.insertAdjacentHTML('beforeend', form);
+        if (rule) {
+            document.getElementById('r-devtype').value = rule.device_type || '';
+            document.getElementById('r-type').value = rule.rule_type || 'range';
+            document.getElementById('r-config').value = rule.config || '';
+            document.getElementById('r-desc').value = rule.description || '';
+        }
+        const saveButton = document.querySelector('#ruleModal .modal-footer button');
+        saveButton.textContent = rule ? '保存' : saveButton.textContent;
+        saveButton.onclick = () => window.saveRule(rule?.id || null);
         new bootstrap.Modal(document.getElementById('ruleModal')).show();
     };
 
-    window.createRule = async function() {
+    window.saveRule = async function(id = null) {
         const data = {
             device_type: document.getElementById('r-devtype').value,
             rule_type: document.getElementById('r-type').value,
@@ -475,11 +528,22 @@
             description: document.getElementById('r-desc').value
         };
         try {
-            await apiPost('/api/physical-rules', data);
+            if (id) {
+                const res = await fetch(API_BASE + '/api/physical-rules/' + id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!res.ok) throw new Error('update failed');
+            } else {
+                await apiPost('/api/physical-rules', data);
+            }
             bootstrap.Modal.getInstance(document.getElementById('ruleModal')).hide();
             loadRules();
         } catch(e) { alert(e.message); }
     };
+
+    window.createRule = () => window.saveRule(null);
 
     window.deleteRule = async function(id) {
         if (!confirm('确定删除?')) return;
