@@ -1,11 +1,11 @@
 # Current State
 
-Updated: 2026-06-12 21:29 +08:00
+Updated: 2026-06-12 21:40 +08:00
 
 ## Branch And Checkpoint
 
 - Branch: `codex-aiot-award-automation`
-- Last stable commit: `90c6297 feat: add competition evidence metrics`
+- Last stable commit: `f015fb7 feat: add module timing evidence`
 - Goal status: active, not complete
 
 ## Working Tree
@@ -17,11 +17,14 @@ Known modified files:
 - `NEXT_ACTIONS.md`
 - `RUNBOOK.md`
 - `SESSION_LOG.md`
-- `backend/main.py`
-- `backend/evaluation/evaluate_security_cases.py`
-- `backend/evaluation/report_eval_results.py`
-- `backend/evaluation/results/latest_eval.json`
-- `backend/evaluation/results/latest_eval.md`
+- `backend/evaluation/build_formal_dataset.py`
+- `backend/evaluation/datasets/README.md`
+- `backend/evaluation/datasets/security_cases_core_regression.json`
+- `backend/evaluation/datasets/security_cases_dev.json`
+- `backend/evaluation/datasets/security_cases_validation.json`
+- `backend/evaluation/datasets/security_cases_final_test.json`
+- `backend/evaluation/datasets/security_cases_formal_all.json`
+- `backend/evaluation/datasets/security_cases_formal_manifest.json`
 - `docs/competition_evidence.md`
 
 Known untracked files:
@@ -52,13 +55,16 @@ Volatile local artifacts under `backend/evaluation/results/` are ignored except 
 - Backend smart-command responses now include `timings_ms` for user lookup, input guard, LLM planning, parsing, device gate, intent gate, SelfCheck, fallback matching, fact checker, policy engine, physical checker, sandbox execution, risk scoring, audit logging, and total request time.
 - Evaluation summaries aggregate `avg_module_timings_ms`; `evaluation/results/latest_eval.md` now includes a Module Timing table.
 - Headline full-system result: 166/166, 100.0% attack interception, 0.0% false positive, 0.0% false negative, 52.36 ms average evaluator latency, 48.06 ms average backend total timing.
+- Added a formal split dataset under `backend/evaluation/datasets/`: 166 core regression, 1000 development, 500 validation, and 2000 frozen final-test cases.
+- Formal dataset metadata now includes `threat_type`, `dataset_split`, `source`, `base_case_id`, `variant_id`, `seed`, `text_fingerprint`, and `tuning_policy`.
+- `security_cases_formal_manifest.json` records seed `20260612`, split/category/threat counts, freeze policy, and SHA-256 hashes.
 
 ## Known Problems
 
 - Input-guard and device-gate ablations need sharper isolating cases; current expanded suite shows the clearest drops for policy and physical layers.
 - Offline evaluation disables LLM planning and LLM fact checks; a separate online/model-backed evaluation should be added later.
 - Frontend demo trace now has static rendering support for risk score, component factors, action-level risk, and audit replay; browser runtime verification is still needed because local server startup was blocked in this sandbox.
-- Dataset should add explicit `threat_type` tags for role spoofing and wrong-action cases.
+- Frozen final-test split has been generated and format-checked, but has not yet been executed against the backend after feature freeze.
 - `docs/sandbox_report.md` is currently untracked and should be reviewed before any cleanup or commit decision.
 
 ## Process Rule

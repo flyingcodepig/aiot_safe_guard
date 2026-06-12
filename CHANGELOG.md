@@ -29,3 +29,5 @@
 - Regenerated the expanded experiment snapshot and Markdown report for full system, four baselines, and six ablations.
 - Added backend `timings_ms` evidence for smart-command safety stages and aggregated `avg_module_timings_ms` in evaluation reports.
 - Added a Module Timing table to the generated Markdown experiment report.
+- Added a reproducible formal safety dataset generator with core, development, validation, and frozen final-test splits.
+- Generated a 3666-case formal dataset with 2000 frozen final-test cases, threat-type taxonomy, split metadata, SHA-256 manifest, and reporting protocol documentation.

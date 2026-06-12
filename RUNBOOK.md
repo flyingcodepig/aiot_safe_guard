@@ -35,6 +35,19 @@ cd D:\aiot_safe_guard\backend
 ..\somethingelse\venv\Scripts\python.exe evaluation\build_expanded_cases.py
 ```
 
+## Regenerate Formal Split Dataset
+
+```powershell
+cd D:\aiot_safe_guard\backend
+..\somethingelse\venv\Scripts\python.exe evaluation\build_formal_dataset.py --output-dir evaluation\datasets --seed 20260612 --dev-count 1000 --validation-count 500 --final-count 2000
+..\somethingelse\venv\Scripts\python.exe evaluation\evaluate_security_cases.py --cases evaluation\datasets\security_cases_final_test.json
+```
+
+Use `core_regression` and `dev` for fixes, `validation` for limited system
+selection, and `final_test` only for frozen final reporting. If final-test
+failures are inspected and used for fixes, regenerate/report a new final split
+with a new seed.
+
 ## Run Offline Evaluation With Managed Server
 
 ```powershell
@@ -70,6 +83,11 @@ Default suites now include:
 
 The Markdown report includes pass rate, attack interception, false positive, false negative, normal pass rate, average latency, per-category tables, failed cases, and high-risk blocked cases.
 It also includes a Module Timing table derived from smart-command `timings_ms` and suite-level `avg_module_timings_ms`.
+
+For post-freeze reporting on the formal final split, replace `--cases
+evaluation\security_cases_expanded.json` with `--cases
+evaluation\datasets\security_cases_final_test.json`. Expect a longer run because
+the final split contains 2000 cases, including repeated rate-limit cases.
 
 ## Check Risk Score Audit Surface
 

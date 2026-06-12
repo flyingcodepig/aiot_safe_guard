@@ -53,3 +53,12 @@
 - Added a Module Timing table to `evaluation/report_eval_results.py` and regenerated `evaluation/results/latest_eval.md`.
 - Updated `docs/competition_evidence.md` with module timing evidence; remaining evidence gap is dataset taxonomy tagging.
 - Verification: py_compile passed; `test_device_mention.py` passed; `test_risk_scoring.py` passed; TestClient confirmed `timings_ms`; managed 11-suite evaluation completed with module timing available.
+
+## 2026-06-12 21:40 +08:00
+
+- Addressed the overfitting/reporting concern by separating the 166-case suite as `core_regression` instead of treating it as the only final evidence.
+- Added `evaluation/build_formal_dataset.py` to generate deterministic formal dataset splits with `threat_type`, split metadata, base-case lineage, fingerprints, and tuning policy.
+- Generated `backend/evaluation/datasets/`: 166 core regression cases, 1000 development cases, 500 validation cases, and 2000 frozen final-test cases, plus an all-cases file and manifest.
+- Added `backend/evaluation/datasets/README.md` documenting the reporting protocol: tune on core/dev, use validation sparingly, and do not tune on official final-test failures.
+- Updated `docs/competition_evidence.md` with formal split counts, threat taxonomy counts, manifest hash policy, and the next final-test execution gap.
+- Verification: formal dataset generator py_compile passed; small smoke generation passed; final-test case file loaded successfully through `evaluation/evaluate_security_cases.py`.

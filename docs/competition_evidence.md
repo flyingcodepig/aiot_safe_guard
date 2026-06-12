@@ -19,9 +19,24 @@ It is not a generic IoT dashboard. The core security problem is that an LLM-Agen
 
 ## Dataset Coverage
 
-Current formal corpus: `backend/evaluation/security_cases_expanded.json`
+Core regression corpus: `backend/evaluation/security_cases_expanded.json`
 
-Current size: 166 cases.
+Formal split corpus: `backend/evaluation/datasets/`
+
+Current formal size: 3666 cases.
+
+| Split | File | Count | Intended Use |
+| --- | --- | ---: | --- |
+| Core regression | `security_cases_core_regression.json` | 166 | Hand-audited regression and fix verification |
+| Development | `security_cases_dev.json` | 1000 | Development and debugging |
+| Validation | `security_cases_validation.json` | 500 | Periodic system selection and sanity checks |
+| Final test | `security_cases_final_test.json` | 2000 | Frozen final evaluation; no tuning on official failures |
+| Formal all | `security_cases_formal_all.json` | 3666 | Coverage statistics |
+
+`security_cases_formal_manifest.json` records seed `20260612`, SHA-256 hashes,
+split counts, category counts, threat taxonomy counts, and the freeze policy.
+The 166-case suite should be reported as the core regression set, not as the
+only final test evidence.
 
 Required coverage mapping:
 
@@ -29,15 +44,30 @@ Required coverage mapping:
 | --- | --- | --- |
 | Normal operation | `normal` category | covered |
 | Prompt injection | `prompt_injection` category | covered |
-| Role spoofing | prompt-injection cases that claim admin/teacher/system identity | covered, but should be split or tagged |
+| Role spoofing | `threat_type=role_spoofing` | covered |
 | Unauthorized control | `privilege` category | covered |
 | Hallucinated device | `hallucination` category | covered |
-| Wrong/unsupported action | `hallucination` category includes device-action mismatch | covered, but should be split or tagged |
+| Wrong/unsupported action | `threat_type=wrong_action` | covered |
 | Parameter out of bounds | `physical_range` category | covered |
 | Interlock conflict | `interlock` category | covered |
 | Rate abuse | `rate_limit` category | covered |
 
-Next dataset improvement: add a `threat_type` field so role spoofing and wrong-action hallucination are directly reportable without manually reading case text.
+Threat-type distribution in the formal corpus:
+
+| Threat Type | Count |
+| --- | ---: |
+| `normal_control` | 457 |
+| `normal_read` | 84 |
+| `prompt_injection` | 176 |
+| `role_spoofing` | 249 |
+| `audit_evasion` | 98 |
+| `unauthorized_control` | 530 |
+| `hallucinated_device` | 259 |
+| `wrong_action` | 154 |
+| `non_device_intent` | 112 |
+| `parameter_out_of_bounds` | 524 |
+| `interlock_conflict` | 513 |
+| `rate_abuse` | 510 |
 
 ## Metrics
 
@@ -108,7 +138,8 @@ Latest full-system module timing highlights:
 | audit_logging | 13.74 |
 | total | 48.06 |
 
-Next experiment gap: add dataset `threat_type` tags.
+Next experiment gap: execute the frozen final-test split after feature freeze and
+report it separately from development/regression results.
 
 ## Experiment Tables
 
@@ -122,4 +153,4 @@ Next experiment gap: add dataset `threat_type` tags.
 
 Required next tables:
 
-- dataset taxonomy table after adding `threat_type`
+- frozen final-test result table once final evaluation is run
