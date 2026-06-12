@@ -10,7 +10,7 @@ class AuditLogger:
     def log(self, request_id: str, user_input: str, user_role: str,
             device_id: str, action: str, input_guard: dict,
             fact_check: dict, policy_result: dict, physical_result: dict,
-            final_decision: str, block_reasons: list):
+            final_decision: str, block_reasons: list, risk_result: dict | None = None):
         """记录完整审计日志"""
         conn = get_connection()
         c = conn.cursor()
@@ -18,8 +18,8 @@ class AuditLogger:
             """INSERT INTO audit_logs
             (request_id, user_input, user_role, target_device, target_action,
              input_guard_result, fact_check_result, policy_result, physical_result,
-             final_decision, block_reasons, timestamp)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+             risk_result, final_decision, block_reasons, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 request_id,
                 user_input,
@@ -30,6 +30,7 @@ class AuditLogger:
                 json.dumps(fact_check, ensure_ascii=False),
                 json.dumps(policy_result, ensure_ascii=False),
                 json.dumps(physical_result, ensure_ascii=False),
+                json.dumps(risk_result or {}, ensure_ascii=False),
                 final_decision,
                 json.dumps(block_reasons, ensure_ascii=False),
                 datetime.now().isoformat()

@@ -19,3 +19,6 @@
 - Added Markdown evaluation reporting for direct report/table reuse.
 - Fixed reset reproducibility by clearing rate-limit buckets and pending confirmations during `/api/reset`.
 - Tightened device mention matching so short generic aliases such as "door" or "light" do not trigger unsafe device matches.
+- Added explainable AIoT command risk scoring across input risk, device criticality, permission risk, parameter boundaries, physical/interlock state, and model consistency.
+- Returned `risk_result` from `/api/smart_command`, each smart `action_result`, and direct `/api/command` responses.
+- Persisted `risk_result` in audit logs and exposed it through `/api/logs` plus JSON/CSV `/api/logs/export`.

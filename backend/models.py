@@ -22,6 +22,7 @@ class CommandResponse(BaseModel):
     device_state_after: Optional[Dict[str, Any]]
     block_reasons: List[str]
     message: str
+    risk_result: Optional[Dict[str, Any]] = None
 
 class AuditLogEntry(BaseModel):
     id: Optional[int]
@@ -34,6 +35,7 @@ class AuditLogEntry(BaseModel):
     fact_check_result: Optional[str]
     policy_result: Optional[str]
     physical_result: Optional[str]
+    risk_result: Optional[str] = None
     final_decision: str
     block_reasons: Optional[str]
     timestamp: Optional[datetime]

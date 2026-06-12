@@ -27,3 +27,11 @@
 - Added negative-number parameter extraction for physical boundary tests.
 - Updated device mention regression tests to the safer matching semantics.
 - Verification: expanded full suite passed 166/166; five-suite ablation snapshot generated successfully.
+
+## 2026-06-12 20:56 +08:00
+
+- Added explainable command risk scoring with components for input risk, device criticality, permission risk, parameter boundaries, physical/interlock state, and model consistency.
+- Wired `risk_result` into direct command responses, smart-command overall responses, every smart `action_result`, audit log persistence, `/api/logs`, and JSON/CSV log export.
+- Added regression tests for low-risk commands, permission-blocked door unlocks, out-of-range parameters, and overall score aggregation.
+- Verified the risk audit surface with an in-process FastAPI check covering `/api/smart_command`, `/api/logs`, and `/api/logs/export`.
+- Verification: py_compile passed; `test_device_mention.py` passed; `test_risk_scoring.py` passed; expanded five-suite ablation run completed with full 166/166, no input guard 166/166, no device gate 165/166, no policy engine 135/166, no physical checker 142/166.

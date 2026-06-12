@@ -29,6 +29,7 @@ from llm_planner import LLMPlanner, ActionParser, FallbackMatcher
 from input_guard import InputGuard
 from fact_checker import FactChecker
 from selfcheck_integration import SelfCheckWrapper
+from risk_scoring import score_action, score_overall
 
 
 # ---------- 数据模型 ----------
@@ -46,6 +47,7 @@ class SmartCommandResponse(BaseModel):
     action_results: List[Dict[str, Any]]
     overall_decision: str
     input_guard_result: Optional[Dict[str, Any]] = None
+    risk_result: Optional[Dict[str, Any]] = None
     require_confirmation: bool = False
     confirmation_token: Optional[str] = None
 
@@ -181,6 +183,50 @@ def mentioned_device_ids(user_input: str) -> List[str]:
         if device_loader.device_mentioned_in_input(device_id, user_input)
     ]
 
+
+def no_action_risk(
+    user_role: str,
+    input_guard_result: Dict[str, Any],
+    reason: str,
+    policy_decision: str = "block",
+) -> Dict[str, Any]:
+    action_score = score_action(
+        user_role=user_role,
+        input_guard_result=input_guard_result,
+        device_loader=device_loader,
+        policy_result={"decision": policy_decision, "reason": reason},
+        physical_result={"decision": "pass", "reason": "not executed"},
+        fact_result={"is_valid": policy_decision != "block", "reasons": [reason]},
+        raw_actions=[],
+        parsed_actions=[],
+    )
+    return score_overall([], action_score)
+
+
+def direct_command_risk(
+    user_role: str,
+    input_guard_result: Dict[str, Any],
+    device_id: str,
+    device_type: str,
+    action: str,
+    params: Dict[str, Any],
+    policy_result: Dict[str, Any],
+    physical_result: Dict[str, Any],
+    fact_result: Dict[str, Any],
+) -> Dict[str, Any]:
+    return score_action(
+        user_role=user_role,
+        input_guard_result=input_guard_result,
+        device_loader=device_loader,
+        device_id=device_id,
+        device_type=device_type,
+        action=action,
+        params=params,
+        policy_result=policy_result,
+        physical_result=physical_result,
+        fact_result=fact_result,
+    )
+
 # API Key 认证中间件（纯 ASGI 中间件，与 FastAPI 完全兼容）
 from starlette.responses import JSONResponse
 
@@ -279,15 +325,22 @@ async def process_command(req: CommandRequest, request: Request):
     guard_result = input_guard.scan(req.user_input, user_role)
     if guard_result["risk_level"] == "high":
         block_reasons.append("输入安全检测: 高风险")
+        risk_result = direct_command_risk(
+            user_role, guard_result, req.device_id, device_loader.get_device_type(req.device_id),
+            req.action, req.params or {}, {"decision": "block", "reason": "input guard high risk"},
+            {"decision": "pass", "reason": "not executed"},
+            {"is_valid": False, "reasons": ["input guard high risk"]},
+        )
         audit_logger.log(request_id, req.user_input, user_role, req.device_id, req.action,
-                         guard_result, {}, {}, {}, "block", block_reasons)
+                         guard_result, {}, {}, {}, "block", block_reasons, risk_result)
         return CommandResponse(
             request_id=request_id, user_id=req.user_id, user_role=user_role,
             device_id=req.device_id, action=req.action, final_decision="block",
             policy_check={"decision": "fail", "reason": "输入安全检测拦截"},
             physical_check={"decision": "pass", "reason": "未执行"},
             device_state_after=None, block_reasons=block_reasons,
-            message="输入被安全检测拦截"
+            message="输入被安全检测拦截",
+            risk_result=risk_result,
         )
     if guard_result["risk_level"] == "medium":
         # 受信客户端（有API Key或开发模式）放行并记录，否则拦截
@@ -297,27 +350,46 @@ async def process_command(req: CommandRequest, request: Request):
             block_reasons.append("输入安全检测: 中风险（受信客户端放行）")
         else:
             block_reasons.append("输入安全检测: 中风险，直接命令端点需人工审核")
+            risk_result = direct_command_risk(
+                user_role, guard_result, req.device_id, device_loader.get_device_type(req.device_id),
+                req.action, req.params or {}, {"decision": "block", "reason": "input guard medium risk"},
+                {"decision": "pass", "reason": "not executed"},
+                {"is_valid": False, "reasons": ["input guard medium risk"]},
+            )
             audit_logger.log(request_id, req.user_input, user_role, req.device_id, req.action,
-                             guard_result, {}, {}, {}, "block", block_reasons)
+                             guard_result, {}, {}, {}, "block", block_reasons, risk_result)
             return CommandResponse(
                 request_id=request_id, user_id=req.user_id, user_role=user_role,
                 device_id=req.device_id, action=req.action, final_decision="block",
                 policy_check={"decision": "fail", "reason": "输入安全检测: 中风险"},
                 physical_check={"decision": "pass", "reason": "未执行"},
                 device_state_after=None, block_reasons=block_reasons,
-                message="输入触发安全检测，请添加 X-API-Key 请求头或使用 /api/smart_command 端点"
+                message="输入触发安全检测，请添加 X-API-Key 请求头或使用 /api/smart_command 端点",
+                risk_result=risk_result,
             )
 
     device_type = device_loader.get_device_type(req.device_id)
 
     if not device_type or device_type == "unknown":
+        block_reasons = [f"设备 {req.device_id} 不存在"]
+        risk_result = direct_command_risk(
+            user_role, guard_result, req.device_id, "unknown", req.action, req.params or {},
+            {"decision": "block", "reason": "unknown device"},
+            {"decision": "pass", "reason": "not executed"},
+            {"is_valid": False, "reasons": ["unknown device"]},
+        )
+        audit_logger.log(request_id, req.user_input, user_role, req.device_id, req.action,
+                         guard_result, {"is_valid": False, "reasons": ["unknown device"]},
+                         {"decision": "block", "reason": "unknown device"}, {},
+                         "block", block_reasons, risk_result)
         return CommandResponse(
             request_id=request_id, user_id=req.user_id, user_role=user_role,
             device_id=req.device_id, action=req.action, final_decision="block",
             policy_check={"decision": "fail", "reason": f"设备 {req.device_id} 不存在"},
             physical_check={"decision": "pass", "reason": ""},
-            device_state_after=None, block_reasons=[f"设备 {req.device_id} 不存在"],
-            message=f"设备 {req.device_id} 不存在"
+            device_state_after=None, block_reasons=block_reasons,
+            message=f"设备 {req.device_id} 不存在",
+            risk_result=risk_result,
         )
 
     # 事实校验 — 参数 Schema 检查
@@ -326,28 +398,44 @@ async def process_command(req: CommandRequest, request: Request):
     )
     if not is_valid:
         block_reasons.append(f"事实校验失败: {'; '.join(fact_reasons)}")
+        fact_result = {"is_valid": False, "reasons": fact_reasons}
+        risk_result = direct_command_risk(
+            user_role, guard_result, req.device_id, device_type, req.action, req.params or {},
+            {"decision": "block", "reason": "fact check failed"},
+            {"decision": "pass", "reason": "not executed"},
+            fact_result,
+        )
         audit_logger.log(request_id, req.user_input, user_role, req.device_id, req.action,
-                         {}, {"is_valid": False, "reasons": fact_reasons}, {}, {}, "block", block_reasons)
+                         guard_result, fact_result, {}, {}, "block", block_reasons, risk_result)
         return CommandResponse(
             request_id=request_id, user_id=req.user_id, user_role=user_role,
             device_id=req.device_id, action=req.action, final_decision="block",
             policy_check={"decision": "fail", "reason": f"事实校验: {'; '.join(fact_reasons)}"},
             physical_check={"decision": "pass", "reason": "未执行"},
             device_state_after=None, block_reasons=block_reasons,
-            message=f"参数校验失败: {'; '.join(fact_reasons)}"
+            message=f"参数校验失败: {'; '.join(fact_reasons)}",
+            risk_result=risk_result,
         )
 
     pd, pr, pr2 = policy_engine.check(user_role, device_type, req.action)
     policy_result = {"decision": pd, "matched_rule": pr, "reason": pr2}
     if pd == "block":
         block_reasons.append(f"权限拒绝: {pr2}")
+        risk_result = direct_command_risk(
+            user_role, guard_result, req.device_id, device_type, req.action, req.params or {},
+            policy_result,
+            {"decision": "pass", "reason": "not executed"},
+            {"is_valid": True},
+        )
         audit_logger.log(request_id, req.user_input, user_role, req.device_id, req.action,
-                         guard_result, {}, policy_result, {}, "block", block_reasons)
+                         guard_result, {"is_valid": True}, policy_result, {},
+                         "block", block_reasons, risk_result)
         return CommandResponse(
             request_id=request_id, user_id=req.user_id, user_role=user_role,
             device_id=req.device_id, action=req.action, final_decision="block",
             policy_check=policy_result, physical_check={"decision": "pass", "reason": "未执行"},
-            device_state_after=None, block_reasons=block_reasons, message=f"操作被拒绝: {pr2}"
+            device_state_after=None, block_reasons=block_reasons, message=f"操作被拒绝: {pr2}",
+            risk_result=risk_result,
         )
 
     phys_decision, phys_reason, safe_alt = physical_checker.check(req.device_id, req.action, req.params or {})
@@ -355,27 +443,39 @@ async def process_command(req: CommandRequest, request: Request):
     if phys_decision == "fail":
         block_reasons.append(f"物理边界: {phys_reason}")
         alt_msg = f"，建议值为 {safe_alt}" if safe_alt else ""
+        risk_result = direct_command_risk(
+            user_role, guard_result, req.device_id, device_type, req.action, req.params or {},
+            policy_result, physical_result, {"is_valid": True},
+        )
         audit_logger.log(request_id, req.user_input, user_role, req.device_id, req.action,
-                         guard_result, {}, policy_result, physical_result, "block", block_reasons)
+                         guard_result, {"is_valid": True}, policy_result, physical_result,
+                         "block", block_reasons, risk_result)
         return CommandResponse(
             request_id=request_id, user_id=req.user_id, user_role=user_role,
             device_id=req.device_id, action=req.action, final_decision="block",
             policy_check=policy_result, physical_check=physical_result, device_state_after=None,
-            block_reasons=block_reasons, message=f"操作被拒绝: {phys_reason}{alt_msg}"
+            block_reasons=block_reasons, message=f"操作被拒绝: {phys_reason}{alt_msg}",
+            risk_result=risk_result,
         )
 
     success, msg, new_state = sandbox.execute(req.device_id, req.action, req.params or {})
     if not success:
         block_reasons.append(f"执行失败: {msg}")
     final_decision = "allow" if success else "block"
+    risk_result = direct_command_risk(
+        user_role, guard_result, req.device_id, device_type, req.action, req.params or {},
+        policy_result, physical_result, {"is_valid": True},
+    )
     audit_logger.log(request_id, req.user_input, user_role, req.device_id, req.action,
-                     guard_result, {}, policy_result, physical_result, final_decision, block_reasons)
+                     guard_result, {"is_valid": True}, policy_result, physical_result,
+                     final_decision, block_reasons, risk_result)
     return CommandResponse(
         request_id=request_id, user_id=req.user_id, user_role=user_role,
         device_id=req.device_id, action=req.action, final_decision=final_decision,
         policy_check=policy_result, physical_check=physical_result,
         device_state_after=new_state if success else None,
-        block_reasons=block_reasons, message=msg
+        block_reasons=block_reasons, message=msg,
+        risk_result=risk_result,
     )
 
 
@@ -438,7 +538,7 @@ async def export_logs(
         output = io.StringIO()
         fieldnames = [
             "timestamp", "request_id", "user_role", "target_device", "target_action",
-            "final_decision", "block_reasons", "user_input",
+            "final_decision", "risk_result", "block_reasons", "user_input",
         ]
         writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
@@ -500,6 +600,11 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
         if sc_result["risk_score"] >= selfcheck_wrapper.threshold:
             print(f"SelfCheckGPT: 多采样不一致 (risk={sc_result['risk_score']:.2f})")
             # 不直接 block，而是返回 require_confirm
+            risk_result = no_action_risk(
+                user_role, input_guard_result,
+                f"selfcheck inconsistent risk={sc_result['risk_score']:.2f}",
+                policy_decision="allow",
+            )
             token = uuid.uuid4().hex
             conn = get_connection()
             conn.execute(
@@ -508,11 +613,18 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
             )
             conn.commit()
             conn.close()
+            audit_logger.log(request_id, user_input, user_role, "", "",
+                             input_guard_result,
+                             {"is_valid": False, "reasons": ["selfcheck inconsistent"]},
+                             {"decision": "allow", "reason": "requires confirmation"},
+                             {}, "require_confirm",
+                             ["selfcheck inconsistent"], risk_result)
             return SmartCommandResponse(
                 request_id=request_id, user_id=user_id, user_role=user_role,
                 user_input=user_input, llm_actions=raw_actions, parsed_actions=parsed_actions,
                 action_results=[], overall_decision="require_confirm",
                 input_guard_result=input_guard_result,
+                risk_result=risk_result,
                 require_confirmation=True, confirmation_token=token,
             )
 
@@ -520,14 +632,18 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
     if not parsed_actions:
         mentioned_devices = mentioned_device_ids(user_input)
         if safety_layers["device_gate"] and "让" in user_input and len(mentioned_devices) > 1:
+            risk_result = no_action_risk(
+                user_role, input_guard_result, "cross-device delegated control"
+            )
             audit_logger.log(request_id, user_input, user_role, "", "",
                              input_guard_result, {"is_valid": False, "reasons": ["cross-device delegated control"]},
-                             {}, {}, "block", ["cross-device delegated control"])
+                             {}, {}, "block", ["cross-device delegated control"], risk_result)
             return SmartCommandResponse(
                 request_id=request_id, user_id=user_id, user_role=user_role,
                 user_input=user_input, llm_actions=raw_actions, parsed_actions=[],
                 action_results=[], overall_decision="block",
                 input_guard_result=input_guard_result,
+                risk_result=risk_result,
             )
 
         fallback_actions = fallback_matcher.match(user_input)
@@ -554,14 +670,18 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
                     for device_id in readable_devices
                 ]
             if not parsed_actions:
+                risk_result = no_action_risk(
+                    user_role, input_guard_result, "no executable action recognized"
+                )
                 audit_logger.log(request_id, user_input, user_role, "", "",
                                  input_guard_result, {"is_valid": False, "reasons": ["LLM 和关键词匹配均无法识别"]},
-                                 {}, {}, "block", ["未能识别任何可执行动作"])
+                                 {}, {}, "block", ["未能识别任何可执行动作"], risk_result)
                 return SmartCommandResponse(
                     request_id=request_id, user_id=user_id, user_role=user_role,
                     user_input=user_input, llm_actions=raw_actions, parsed_actions=[],
                     action_results=[], overall_decision="block",
                     input_guard_result=input_guard_result,
+                    risk_result=risk_result,
                 )
 
     action_results = []
@@ -586,14 +706,30 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
         if not is_valid:
             msg = f"事实校验失败: {'; '.join(fact_reasons)}"
             all_passed = False
+            fact_result = {"is_valid": False, "reasons": fact_reasons}
+            risk_result = score_action(
+                user_role=user_role,
+                input_guard_result=input_guard_result,
+                device_loader=device_loader,
+                device_id=device_id,
+                device_type=device_type,
+                action=action,
+                params=params,
+                policy_result={"decision": "block", "reason": "fact check failed"},
+                physical_result={"decision": "pass", "reason": "not executed"},
+                fact_result=fact_result,
+                raw_actions=raw_actions,
+                parsed_actions=parsed_actions,
+            )
             audit_logger.log(request_id, user_input, user_role, device_id, action,
-                             input_guard_result, {"is_valid": False, "reasons": fact_reasons},
-                             {}, {}, "block", [msg])
+                             input_guard_result, fact_result,
+                             {}, {}, "block", [msg], risk_result)
             action_results.append({
                 "device_id": device_id, "action": action, "params": params,
                 "policy_check": None, "physical_check": None, "fact_check": False,
                 "executed": False, "final_decision": "block", "message": msg,
                 "device_state_after": None,
+                "risk_result": risk_result,
             })
             continue
 
@@ -619,26 +755,50 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
             final = "block"
             all_passed = False
 
+        fact_result = {"is_valid": True}
+        policy_result = {"decision": "allow" if policy_pass else "block", "reason": pr_reason}
+        physical_result = {"decision": "pass" if phys_pass else "fail", "reason": phys_reason}
+        risk_result = score_action(
+            user_role=user_role,
+            input_guard_result=input_guard_result,
+            device_loader=device_loader,
+            device_id=device_id,
+            device_type=device_type,
+            action=action,
+            params=params,
+            policy_result=policy_result,
+            physical_result=physical_result,
+            fact_result=fact_result,
+            raw_actions=raw_actions,
+            parsed_actions=parsed_actions,
+        )
         action_results.append({
             "device_id": device_id, "action": action, "params": params,
             "policy_check": policy_pass, "physical_check": phys_pass, "fact_check": True,
             "executed": success, "final_decision": final, "message": msg,
             "device_state_after": new_state if success else None,
+            "risk_result": risk_result,
         })
         audit_logger.log(
             request_id, user_input, user_role, device_id, action,
-            input_guard_result, {"is_valid": True},
-            {"decision": "allow" if policy_pass else "block", "reason": pr_reason},
-            {"decision": "pass" if phys_pass else "fail", "reason": phys_reason},
-            final, [msg] if final == "block" else []
+            input_guard_result, fact_result,
+            policy_result,
+            physical_result,
+            final, [msg] if final == "block" else [], risk_result
         )
 
     overall = "allow" if all_passed else "block"
+    overall_risk = score_overall([
+        result["risk_result"]
+        for result in action_results
+        if result.get("risk_result")
+    ])
     return SmartCommandResponse(
         request_id=request_id, user_id=user_id, user_role=user_role,
         user_input=user_input, llm_actions=raw_actions, parsed_actions=parsed_actions,
         action_results=action_results, overall_decision=overall,
         input_guard_result=input_guard_result,
+        risk_result=overall_risk,
     )
 
 
@@ -664,29 +824,41 @@ async def process_smart_command(
 
     # high risk: 直接拒绝
     if input_guard_result["risk_level"] == "high":
+        risk_result = no_action_risk(
+            user_role, input_guard_result, "input guard high risk"
+        )
         audit_logger.log(request_id, req.user_input, user_role, "", "",
                          input_guard_result, {}, {}, {}, "block",
-                         ["输入安全检测: 高风险"])
+                         ["输入安全检测: 高风险"], risk_result)
         return SmartCommandResponse(
             request_id=request_id, user_id=req.user_id, user_role=user_role,
             user_input=req.user_input, llm_actions=[], parsed_actions=[],
             action_results=[], overall_decision="block",
             input_guard_result=input_guard_result,
+            risk_result=risk_result,
         )
 
     # medium risk: 需要人工确认
     if input_guard_result["risk_level"] == "medium":
         if input_guard_result.get("sensitive_operation") and user_role in {"student", "visitor"}:
+            risk_result = no_action_risk(
+                user_role, input_guard_result, "low-privilege sensitive operation blocked"
+            )
             audit_logger.log(request_id, req.user_input, user_role, "", "",
                              input_guard_result, {}, {}, {}, "block",
-                             ["low-privilege sensitive operation blocked"])
+                             ["low-privilege sensitive operation blocked"], risk_result)
             return SmartCommandResponse(
                 request_id=request_id, user_id=req.user_id, user_role=user_role,
                 user_input=req.user_input, llm_actions=[], parsed_actions=[],
                 action_results=[], overall_decision="block",
                 input_guard_result=input_guard_result,
+                risk_result=risk_result,
             )
 
+        risk_result = no_action_risk(
+            user_role, input_guard_result, "medium input risk requires confirmation",
+            policy_decision="allow",
+        )
         token = uuid.uuid4().hex
         conn = get_connection()
         conn.execute(
@@ -695,11 +867,16 @@ async def process_smart_command(
         )
         conn.commit()
         conn.close()
+        audit_logger.log(request_id, req.user_input, user_role, "", "",
+                         input_guard_result, {}, {"decision": "allow", "reason": "requires confirmation"},
+                         {}, "require_confirm",
+                         ["medium input risk requires confirmation"], risk_result)
         return SmartCommandResponse(
             request_id=request_id, user_id=req.user_id, user_role=user_role,
             user_input=req.user_input, llm_actions=[], parsed_actions=[],
             action_results=[], overall_decision="require_confirm",
             input_guard_result=input_guard_result,
+            risk_result=risk_result,
             require_confirmation=True, confirmation_token=token,
         )
 
@@ -727,14 +904,24 @@ async def confirm_request(token: str, body: ConfirmRequest):
         raise HTTPException(status_code=404, detail="待确认请求不存在或已处理")
 
     if not body.confirm:
+        request_id = f"REJ_{uuid.uuid4().hex[:8]}"
+        ig = json_module.loads(row["input_guard_result"])
+        risk_result = no_action_risk(
+            row["user_role"], ig, "manual confirmation rejected"
+        )
         c.execute("UPDATE pending_confirmations SET status='rejected' WHERE token=?", (token,))
         conn.commit()
         conn.close()
+        audit_logger.log(request_id, row["user_input"], row["user_role"], "", "",
+                         ig, {}, {}, {}, "block",
+                         ["manual confirmation rejected"], risk_result)
         return SmartCommandResponse(
-            request_id=f"REJ_{uuid.uuid4().hex[:8]}",
+            request_id=request_id,
             user_id=row["user_id"], user_role=row["user_role"],
             user_input=row["user_input"], llm_actions=[], parsed_actions=[],
             action_results=[], overall_decision="block",
+            input_guard_result=ig,
+            risk_result=risk_result,
         )
 
     c.execute("UPDATE pending_confirmations SET status='confirmed' WHERE token=?", (token,))

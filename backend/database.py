@@ -101,10 +101,15 @@ def init_db():
         fact_check_result TEXT,
         policy_result TEXT,
         physical_result TEXT,
+        risk_result TEXT,
         final_decision TEXT,
         block_reasons TEXT,
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
+    c.execute("PRAGMA table_info(audit_logs)")
+    audit_columns = {row["name"] for row in c.fetchall()}
+    if "risk_result" not in audit_columns:
+        c.execute("ALTER TABLE audit_logs ADD COLUMN risk_result TEXT")
 
     # 待确认请求表
     c.execute('''CREATE TABLE IF NOT EXISTS pending_confirmations (

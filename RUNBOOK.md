@@ -15,8 +15,9 @@ git log -1 --oneline
 
 ```powershell
 cd D:\aiot_safe_guard\backend
-..\somethingelse\venv\Scripts\python.exe -m py_compile config.py database.py input_guard.py main.py
+..\somethingelse\venv\Scripts\python.exe -m py_compile audit.py database.py main.py models.py risk_scoring.py test_risk_scoring.py
 ..\somethingelse\venv\Scripts\python.exe test_device_mention.py
+..\somethingelse\venv\Scripts\python.exe test_risk_scoring.py
 ```
 
 ## Dataset Summary
@@ -44,6 +45,26 @@ cd D:\aiot_safe_guard\backend
 The wrapper starts uvicorn, waits for `/health`, runs the evaluation, prints a summary, writes the full JSON, and stops the server.
 
 Use `--print-full-json` when the full response body is needed in terminal output.
+
+## Check Risk Score Audit Surface
+
+```powershell
+cd D:\aiot_safe_guard\backend
+$env:ENABLE_LLM_PLANNER='false'
+$env:ENABLE_LLM_FACT_CHECKS='false'
+$env:ENABLE_LLM_GUARD_SCANNER='false'
+$env:ENABLE_SELFCHECK_GATE='false'
+$env:SELFCHECK_ENABLED='false'
+$env:DATABASE_URL='sqlite:///./aiot_guard_api_check.db'
+```
+
+Then use `fastapi.testclient.TestClient` to send `/api/smart_command` and verify:
+
+- response-level `risk_result`
+- per-action `risk_result`
+- `/api/logs` `risk_result`
+- `/api/logs/export?format=json` `risk_result`
+- `/api/logs/export?format=csv` `risk_result` header/field
 
 ## Render Evaluation Tables
 
