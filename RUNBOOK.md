@@ -24,18 +24,33 @@ cd D:\aiot_safe_guard\backend
 ```powershell
 cd D:\aiot_safe_guard\backend
 ..\somethingelse\venv\Scripts\python.exe evaluation\evaluate_security_cases.py
+..\somethingelse\venv\Scripts\python.exe evaluation\evaluate_security_cases.py --cases evaluation\security_cases_expanded.json
+```
+
+## Regenerate Expanded Dataset
+
+```powershell
+cd D:\aiot_safe_guard\backend
+..\somethingelse\venv\Scripts\python.exe evaluation\build_expanded_cases.py
 ```
 
 ## Run Offline Evaluation With Managed Server
 
 ```powershell
 cd D:\aiot_safe_guard\backend
-..\somethingelse\venv\Scripts\python.exe evaluation\run_eval_with_server.py --output evaluation\results\latest_eval.json --ablation full no_policy_engine no_physical_checker
+..\somethingelse\venv\Scripts\python.exe evaluation\run_eval_with_server.py --cases evaluation\security_cases_expanded.json --output evaluation\results\latest_eval.json --ablation full no_input_guard no_device_gate no_policy_engine no_physical_checker
 ```
 
 The wrapper starts uvicorn, waits for `/health`, runs the evaluation, prints a summary, writes the full JSON, and stops the server.
 
 Use `--print-full-json` when the full response body is needed in terminal output.
+
+## Render Evaluation Tables
+
+```powershell
+cd D:\aiot_safe_guard\backend
+..\somethingelse\venv\Scripts\python.exe evaluation\report_eval_results.py --input evaluation\results\latest_eval.json --output evaluation\results\latest_eval.md
+```
 
 ## Manual Evaluation Server
 

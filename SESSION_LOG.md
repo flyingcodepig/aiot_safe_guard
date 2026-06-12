@@ -17,3 +17,13 @@
 - Blocked read-like requests that mention no known device when the device gate is enabled.
 - Low-privilege sensitive operations now hard-block instead of entering confirmation.
 - Verification: full core suite passed 20/20; latest three-suite ablation snapshot generated successfully.
+
+## 2026-06-12 20:35 +08:00
+
+- Added `evaluation/build_expanded_cases.py` and generated a 166-case expanded corpus.
+- Added `evaluation/report_eval_results.py` and generated `evaluation/results/latest_eval.md`.
+- Fixed reset reproducibility by clearing `rate_buckets` and `pending_confirmations`.
+- Tightened device mention matching to avoid short generic aliases matching unknown doors/lights.
+- Added negative-number parameter extraction for physical boundary tests.
+- Updated device mention regression tests to the safer matching semantics.
+- Verification: expanded full suite passed 166/166; five-suite ablation snapshot generated successfully.

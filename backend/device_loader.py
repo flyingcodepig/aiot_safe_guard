@@ -193,7 +193,7 @@ class DeviceCapabilityLoader:
             return False
         user_lower = user_input.lower()
         search_terms = [device.name, device_id] + (device.aliases or [])
-        return any(t.lower() in user_lower for t in search_terms if t)
+        return any(t.lower() in user_lower for t in search_terms if t and len(t.strip()) >= 2)
 
     def any_device_mentioned(self, user_input: str) -> bool:
         """检查用户输入是否提到了任意已知设备（全局门禁）"""

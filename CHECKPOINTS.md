@@ -25,4 +25,4 @@ Only run destructive rollback commands after explicit user approval.
 
 ## Next Checkpoint Candidate
 
-Commit the evaluation automation, context-handoff files, and current ablation snapshot after reviewing whether `docs/sandbox_report.md` should be tracked.
+Commit the expanded evaluation corpus, Markdown report helper, reproducibility fixes, and latest expanded ablation snapshot.

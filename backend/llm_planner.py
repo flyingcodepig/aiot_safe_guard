@@ -232,11 +232,17 @@ class FallbackMatcher:
         """检查用户输入是否提到了这个设备"""
         search_texts = [device.name, device_id] + device.aliases
         for text in search_texts:
-            if text and text.lower() in user_input.lower():
+            if text and len(text.strip()) >= 2 and text.lower() in user_input.lower():
                 return True
         return False
 
     def _match_action(self, device, user_input: str) -> str | None:
+        if device.type == "door_lock":
+            if any(word in user_input for word in ["关闭", "关门", "锁门", "锁上"]):
+                return "lock"
+            if any(word in user_input for word in ["打开", "开门", "解锁"]):
+                return "unlock"
+
         """在用户输入中查找匹配的动作"""
         best_action = None
         best_len = 0
@@ -266,6 +272,12 @@ class FallbackMatcher:
             return params
 
         for param_name, param_type in param_specs.items():
+            negative_match = re.search(r'(-\d+(?:\.\d+)?)', user_input)
+            if negative_match:
+                val = negative_match.group(1)
+                params[param_name] = float(val) if '.' in val else int(val)
+                continue
+
             patterns = [
                 rf'{param_name}\s*[=是为：:]\s*(\d+)',
                 rf'(\d+)\s*度',

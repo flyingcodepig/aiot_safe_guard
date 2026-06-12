@@ -9,3 +9,4 @@ llm_guard_src/
 backend/evaluation/results/*.log
 backend/evaluation/results/*.pid
 backend/evaluation/results/full_eval.json
+backend/evaluation/results/expanded_full_eval.json

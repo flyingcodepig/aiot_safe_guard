@@ -173,6 +173,14 @@ def get_safety_layers(request: Optional[Request] = None) -> Dict[str, bool]:
 def disabled_layers(layers: Dict[str, bool]) -> List[str]:
     return [name for name, enabled in sorted(layers.items()) if not enabled]
 
+
+def mentioned_device_ids(user_input: str) -> List[str]:
+    return [
+        device_id
+        for device_id in device_loader.devices
+        if device_loader.device_mentioned_in_input(device_id, user_input)
+    ]
+
 # API Key 认证中间件（纯 ASGI 中间件，与 FastAPI 完全兼容）
 from starlette.responses import JSONResponse
 
@@ -510,6 +518,18 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
 
     # LLM 无法识别任何设备/动作时，先用本地关键词匹配兜底
     if not parsed_actions:
+        mentioned_devices = mentioned_device_ids(user_input)
+        if safety_layers["device_gate"] and "让" in user_input and len(mentioned_devices) > 1:
+            audit_logger.log(request_id, user_input, user_role, "", "",
+                             input_guard_result, {"is_valid": False, "reasons": ["cross-device delegated control"]},
+                             {}, {}, "block", ["cross-device delegated control"])
+            return SmartCommandResponse(
+                request_id=request_id, user_id=user_id, user_role=user_role,
+                user_input=user_input, llm_actions=raw_actions, parsed_actions=[],
+                action_results=[], overall_decision="block",
+                input_guard_result=input_guard_result,
+            )
+
         fallback_actions = fallback_matcher.match(user_input)
         if fallback_actions:
             parsed_actions = fallback_actions
@@ -517,7 +537,23 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
             # 如果是查询/只读类请求，允许通过（无需生成动作）
             read_patterns = ["查看", "查询", "状态", "是多少", "怎么样", "什么", "读", "获取", "显示"]
             is_read_query = any(p in user_input for p in read_patterns)
-            if not is_read_query or (safety_layers["device_gate"] and not device_loader.any_device_mentioned(user_input)):
+            readable_devices = [
+                device_id
+                for device_id in mentioned_devices
+                if device_loader.action_supported(device_id, "read")
+            ]
+            if is_read_query and readable_devices:
+                parsed_actions = [
+                    {
+                        "device_id": device_id,
+                        "device_type": device_loader.get_device_type(device_id),
+                        "action": "read",
+                        "params": {},
+                        "llm_reason": "read query fallback",
+                    }
+                    for device_id in readable_devices
+                ]
+            if not parsed_actions:
                 audit_logger.log(request_id, user_input, user_role, "", "",
                                  input_guard_result, {"is_valid": False, "reasons": ["LLM 和关键词匹配均无法识别"]},
                                  {}, {}, "block", ["未能识别任何可执行动作"])

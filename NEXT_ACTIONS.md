@@ -1,28 +1,26 @@
 # Next Actions
 
-Updated: 2026-06-12 20:18 +08:00
+Updated: 2026-06-12 20:35 +08:00
 
 ## Active Focus
 
-Expand the evidence base beyond the 20-case core suite and start turning the engineering pipeline into competition-grade quantitative evaluation.
+Move from expanded evaluation evidence into risk scoring and demo trace quality.
 
 ## Immediate Tasks
 
-1. Expand the evaluation dataset.
-   - Current core set: 20 cases in `backend/evaluation/security_cases_core.json`.
-   - Target for competition-grade evidence: 150-300 categorized cases.
-   - Add adversarial natural-language variants, boundary values, multi-device commands, role confusion, and state-dependent interlocks.
-
-2. Add command risk scoring.
+1. Add command risk scoring.
    - Target: documented score using input risk, device criticality, permission risk, parameter distance, interlock state, and model consistency.
+   - Include the score in smart-command responses and audit logs.
 
-3. Improve the demo trace.
+2. Improve the demo trace.
    - Target: frontend shows natural-language input, LLM plan, layer decisions, risk score, execution result, device state, and audit replay.
 
-4. Add evaluation reporting helpers.
-   - Target: summarize `evaluation/results/latest_eval.json` into Markdown tables for the future report.
+3. Strengthen ablation coverage.
+   - Current expanded snapshot: full, no input guard, no device gate, no policy engine, no physical checker.
+   - Add interpretable cases that isolate input guard and device gate more strongly.
+   - Later include no intent gate, no fact checker, and no selfcheck when online/model-backed evaluation is available.
 
-5. Review `docs/sandbox_report.md`.
+4. Review `docs/sandbox_report.md`.
    - Target: decide whether it is a source document to keep tracked or a generated/local artifact.
 
 ## Not Now

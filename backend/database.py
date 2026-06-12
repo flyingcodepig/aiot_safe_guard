@@ -213,6 +213,8 @@ def reset_db():
     # 清空动态数据表
     c.execute("DELETE FROM device_states")
     c.execute("DELETE FROM audit_logs")
+    c.execute("DELETE FROM pending_confirmations")
+    c.execute("DELETE FROM rate_buckets")
     # 保留用户、策略、物理规则表，但可以重新插入默认值（先删后插）
     c.execute("DELETE FROM users")
     c.execute("DELETE FROM policies")

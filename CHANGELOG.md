@@ -15,3 +15,7 @@
 - Fixed SQLite evaluation stability with WAL/busy timeout and a rate-limit connection leak fix.
 - Hardened fallback action matching against unsupported-action hallucinations and blocked read-like requests that mention no known device.
 - Generated a repeatable three-suite ablation snapshot: full, no policy engine, and no physical checker.
+- Added a generated 166-case expanded safety corpus with balanced category coverage.
+- Added Markdown evaluation reporting for direct report/table reuse.
+- Fixed reset reproducibility by clearing rate-limit buckets and pending confirmations during `/api/reset`.
+- Tightened device mention matching so short generic aliases such as "door" or "light" do not trigger unsafe device matches.

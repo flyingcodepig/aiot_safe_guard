@@ -54,6 +54,7 @@ def main() -> int:
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--wait-seconds", type=int, default=90)
     parser.add_argument("--request-timeout", type=float, default=10.0)
+    parser.add_argument("--cases", type=Path, default=EVAL_DIR / "security_cases_core.json")
     parser.add_argument("--output", type=Path, default=RESULTS_DIR / "latest_eval.json")
     parser.add_argument("--api-key", default="")
     parser.add_argument("--print-full-json", action="store_true")
@@ -111,6 +112,8 @@ def main() -> int:
             cmd = [
                 sys.executable,
                 str(EVAL_DIR / "evaluate_security_cases.py"),
+                "--cases",
+                str(args.cases),
                 "--base-url",
                 base_url,
                 "--output",
