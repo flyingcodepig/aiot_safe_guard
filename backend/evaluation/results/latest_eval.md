@@ -1,6 +1,6 @@
 # AIoT Safe Guard Evaluation Summary
 
-- Generated: 2026-06-12T21:11:10
+- Generated: 2026-06-12T21:28:50
 - Case file: `evaluation\security_cases_expanded.json`
 - Base URL: `http://127.0.0.1:8000`
 
@@ -8,17 +8,17 @@
 
 | Suite | Disabled Layers | Total | Passed | Failed | Pass Rate | Attack Interception | False Positive | False Negative | Normal Pass | Avg Latency(ms) |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| full | none | 166 | 166 | 0 | 100.0% | 100.0% | 0.0% | 0.0% | 100.0% | 18.16 |
-| baseline_llm_direct | input_guard, device_gate, intent_gate, fact_checker, policy_engine, physical_checker, selfcheck | 166 | 63 | 103 | 38.0% | 18.2% | 0.0% | 81.8% | 100.0% | 15.47 |
-| baseline_rbac_only | input_guard, device_gate, intent_gate, fact_checker, physical_checker, selfcheck | 166 | 116 | 50 | 69.9% | 60.3% | 0.0% | 39.7% | 100.0% | 14.32 |
-| baseline_keyword_only | input_guard, intent_gate, fact_checker, policy_engine, physical_checker, selfcheck | 166 | 64 | 102 | 38.6% | 19.1% | 0.0% | 81.0% | 100.0% | 16.24 |
-| baseline_no_physical_rules | physical_checker | 166 | 142 | 24 | 85.5% | 81.0% | 0.0% | 19.1% | 100.0% | 13.37 |
-| no_input_guard | input_guard | 166 | 166 | 0 | 100.0% | 100.0% | 0.0% | 0.0% | 100.0% | 17.86 |
-| no_device_gate | device_gate | 166 | 165 | 1 | 99.4% | 99.2% | 0.0% | 0.8% | 100.0% | 16.34 |
-| no_fact_checker | fact_checker | 166 | 149 | 17 | 89.8% | 86.5% | 0.0% | 13.5% | 100.0% | 18.98 |
-| no_policy_engine | policy_engine | 166 | 135 | 31 | 81.3% | 75.4% | 0.0% | 24.6% | 100.0% | 18.30 |
-| no_physical_checker | physical_checker | 166 | 142 | 24 | 85.5% | 81.0% | 0.0% | 19.1% | 100.0% | 13.79 |
-| no_selfcheck | selfcheck | 166 | 166 | 0 | 100.0% | 100.0% | 0.0% | 0.0% | 100.0% | 17.65 |
+| full | none | 166 | 166 | 0 | 100.0% | 100.0% | 0.0% | 0.0% | 100.0% | 52.36 |
+| baseline_llm_direct | input_guard, device_gate, intent_gate, fact_checker, policy_engine, physical_checker, selfcheck | 166 | 63 | 103 | 38.0% | 18.2% | 0.0% | 81.8% | 100.0% | 44.93 |
+| baseline_rbac_only | input_guard, device_gate, intent_gate, fact_checker, physical_checker, selfcheck | 166 | 116 | 50 | 69.9% | 60.3% | 0.0% | 39.7% | 100.0% | 46.88 |
+| baseline_keyword_only | input_guard, intent_gate, fact_checker, policy_engine, physical_checker, selfcheck | 166 | 64 | 102 | 38.6% | 19.1% | 0.0% | 81.0% | 100.0% | 40.08 |
+| baseline_no_physical_rules | physical_checker | 166 | 142 | 24 | 85.5% | 81.0% | 0.0% | 19.1% | 100.0% | 13.23 |
+| no_input_guard | input_guard | 166 | 166 | 0 | 100.0% | 100.0% | 0.0% | 0.0% | 100.0% | 18.11 |
+| no_device_gate | device_gate | 166 | 165 | 1 | 99.4% | 99.2% | 0.0% | 0.8% | 100.0% | 17.37 |
+| no_fact_checker | fact_checker | 166 | 149 | 17 | 89.8% | 86.5% | 0.0% | 13.5% | 100.0% | 18.80 |
+| no_policy_engine | policy_engine | 166 | 135 | 31 | 81.3% | 75.4% | 0.0% | 24.6% | 100.0% | 16.46 |
+| no_physical_checker | physical_checker | 166 | 142 | 24 | 85.5% | 81.0% | 0.0% | 19.1% | 100.0% | 13.48 |
+| no_selfcheck | selfcheck | 166 | 166 | 0 | 100.0% | 100.0% | 0.0% | 0.0% | 100.0% | 15.81 |
 
 ## Category Breakdown
 
@@ -153,6 +153,22 @@
 | privilege | 30 | 30 | 0 | 100.0% | 100.0% |
 | prompt_injection | 24 | 24 | 0 | 100.0% | 100.0% |
 | rate_limit | 12 | 12 | 0 | 100.0% | 100.0% |
+
+## Module Timing
+
+| Suite | action_parsing | audit_logging | device_gate | fact_checker | fallback_matching | input_guard | intent_gate | llm_planning | physical_checker | policy_engine | risk_scoring | sandbox_execution | selfcheck | total | user_role_lookup |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| full | 0.00 | 13.74 | 0.00 | 0.15 | 0.08 | 1.11 | 0.00 | 0.00 | 22.37 | 8.75 | 0.17 | 22.73 | 0.00 | 48.06 | 9.30 |
+| baseline_llm_direct | 0.01 | 14.90 | 0.00 | 0.01 | 0.11 | 0.02 | 0.00 | 0.00 | 0.00 | 0.00 | 0.26 | 17.88 | 0.00 | 39.66 | 8.47 |
+| baseline_rbac_only | 0.00 | 14.51 | 0.00 | 0.00 | 0.08 | 0.00 | 0.00 | 0.00 | 0.00 | 7.60 | 0.09 | 19.55 | 0.00 | 42.20 | 9.99 |
+| baseline_keyword_only | 0.03 | 11.70 | 0.00 | 0.00 | 0.09 | 0.00 | 0.00 | 0.01 | 0.00 | 0.00 | 0.07 | 14.84 | 0.00 | 35.12 | 10.26 |
+| baseline_no_physical_rules | 0.00 | 4.67 | 0.00 | 0.01 | 0.03 | 0.08 | 0.00 | 0.00 | 0.00 | 2.06 | 0.04 | 6.23 | 0.00 | 11.43 | 2.91 |
+| no_input_guard | 0.00 | 5.03 | 0.00 | 0.02 | 0.04 | 0.00 | 0.00 | 0.00 | 6.16 | 2.13 | 0.05 | 7.91 | 0.00 | 16.14 | 3.16 |
+| no_device_gate | 0.00 | 5.23 | 0.00 | 0.01 | 0.03 | 0.08 | 0.00 | 0.00 | 6.17 | 2.17 | 0.05 | 7.50 | 0.00 | 15.36 | 3.16 |
+| no_fact_checker | 0.00 | 4.99 | 0.00 | 0.00 | 0.03 | 0.08 | 0.00 | 0.00 | 5.84 | 2.17 | 0.05 | 7.45 | 0.00 | 16.74 | 3.12 |
+| no_policy_engine | 0.00 | 4.79 | 0.00 | 0.01 | 0.03 | 0.08 | 0.00 | 0.00 | 5.81 | 0.00 | 0.04 | 7.41 | 0.00 | 14.55 | 3.00 |
+| no_physical_checker | 0.00 | 4.82 | 0.00 | 0.01 | 0.03 | 0.08 | 0.00 | 0.00 | 0.00 | 2.03 | 0.04 | 6.22 | 0.00 | 11.59 | 2.95 |
+| no_selfcheck | 0.00 | 4.68 | 0.00 | 0.01 | 0.03 | 0.08 | 0.00 | 0.00 | 5.70 | 1.99 | 0.04 | 6.74 | 0.00 | 13.92 | 2.95 |
 
 ## Failed Cases
 

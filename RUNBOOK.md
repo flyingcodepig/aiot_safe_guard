@@ -69,6 +69,7 @@ Default suites now include:
 - `no_selfcheck`
 
 The Markdown report includes pass rate, attack interception, false positive, false negative, normal pass rate, average latency, per-category tables, failed cases, and high-risk blocked cases.
+It also includes a Module Timing table derived from smart-command `timings_ms` and suite-level `avg_module_timings_ms`.
 
 ## Check Risk Score Audit Surface
 

@@ -27,3 +27,5 @@
 - Added competition metrics to evaluation summaries: block rate, normal pass rate, attack interception rate, false positive rate, false negative rate, and average latency.
 - Added named baseline profiles for LLM direct execution, RBAC-only, keyword/device-gate-only, and no-physical-rules comparisons.
 - Regenerated the expanded experiment snapshot and Markdown report for full system, four baselines, and six ablations.
+- Added backend `timings_ms` evidence for smart-command safety stages and aggregated `avg_module_timings_ms` in evaluation reports.
+- Added a Module Timing table to the generated Markdown experiment report.

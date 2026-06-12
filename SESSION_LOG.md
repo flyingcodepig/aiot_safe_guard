@@ -45,3 +45,11 @@
 - Regenerated `evaluation/results/latest_eval.json` and `evaluation/results/latest_eval.md` for 11 suites: full, four baselines, and six ablations.
 - Added static frontend rendering support for risk summaries, per-action risk components, and audit replay modal.
 - Verification: evaluation script py_compile passed; expanded dataset summary remains 166 cases; managed evaluation completed successfully; frontend JavaScript parsed successfully with Node. Browser runtime verification was attempted but local server startup was blocked by this sandbox's process-launch restrictions.
+
+## 2026-06-12 21:29 +08:00
+
+- Added smart-command `timings_ms` for user lookup, input guard, planning, parsing, device gate, intent gate, SelfCheck, fallback matching, fact checker, policy engine, physical checker, sandbox execution, risk scoring, audit logging, and total request time.
+- Aggregated per-suite `avg_module_timings_ms` in `evaluation/evaluate_security_cases.py`.
+- Added a Module Timing table to `evaluation/report_eval_results.py` and regenerated `evaluation/results/latest_eval.md`.
+- Updated `docs/competition_evidence.md` with module timing evidence; remaining evidence gap is dataset taxonomy tagging.
+- Verification: py_compile passed; `test_device_mention.py` passed; `test_risk_scoring.py` passed; TestClient confirmed `timings_ms`; managed 11-suite evaluation completed with module timing available.

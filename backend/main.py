@@ -8,6 +8,7 @@ import io
 import uuid
 import os
 import json as json_module
+import time
 from typing import List, Dict, Any, Optional
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Body, Request, Response
@@ -48,6 +49,7 @@ class SmartCommandResponse(BaseModel):
     overall_decision: str
     input_guard_result: Optional[Dict[str, Any]] = None
     risk_result: Optional[Dict[str, Any]] = None
+    timings_ms: Optional[Dict[str, float]] = None
     require_confirmation: bool = False
     confirmation_token: Optional[str] = None
 
@@ -226,6 +228,20 @@ def direct_command_risk(
         physical_result=physical_result,
         fact_result=fact_result,
     )
+
+
+def elapsed_ms(start: float) -> float:
+    return round((time.perf_counter() - start) * 1000, 2)
+
+
+def add_timing(timings: Dict[str, float], name: str, start: float) -> None:
+    timings[name] = round(timings.get(name, 0.0) + elapsed_ms(start), 2)
+
+
+def finalize_timings(timings: Dict[str, float], request_start: float) -> Dict[str, float]:
+    timings["total"] = elapsed_ms(request_start)
+    return timings
+
 
 # API Key 认证中间件（纯 ASGI 中间件，与 FastAPI 完全兼容）
 from starlette.responses import JSONResponse
@@ -564,20 +580,31 @@ async def llm_plan(user_input: str):
 async def execute_smart_pipeline(user_id: str, user_input: str,
                                   request_id: str, user_role: str,
                                   input_guard_result: dict,
-                                  safety_layers: Optional[Dict[str, bool]] = None) -> SmartCommandResponse:
+                                  safety_layers: Optional[Dict[str, bool]] = None,
+                                  timings: Optional[Dict[str, float]] = None,
+                                  request_start: Optional[float] = None) -> SmartCommandResponse:
+    timings = timings or {}
+    request_start = request_start or time.perf_counter()
     safety_layers = safety_layers or get_safety_layers()
+    stage_start = time.perf_counter()
     raw_actions = llm_planner.plan(user_input)
+    add_timing(timings, "llm_planning", stage_start)
+    stage_start = time.perf_counter()
     parsed_actions = action_parser.parse(raw_actions)
+    add_timing(timings, "action_parsing", stage_start)
 
     # SelfCheckGPT 保留：仅作为意图门禁的纵深防御，不再独立运行
     # （原本在此处的无条件 SelfCheckGPT 检查已移除）
 
     # 全局设备门禁：用户输入中若未提及任何已知设备，视为 LLM 幻觉
+    stage_start = time.perf_counter()
     if safety_layers["device_gate"] and parsed_actions and not device_loader.any_device_mentioned(user_input):
         print(f"设备门禁: 用户未提及任何已知设备，丢弃 {len(parsed_actions)} 个动作")
         parsed_actions = []
+    add_timing(timings, "device_gate", stage_start)
 
     # B02 语义意图门禁：score < 0.3 丢弃（解决"动作不匹配用户意图"）
+    stage_start = time.perf_counter()
     if safety_layers["intent_gate"] and parsed_actions:
         consistent = []
         for act in parsed_actions:
@@ -591,12 +618,15 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
         if len(consistent) < len(parsed_actions):
             print(f"意图门禁: 丢弃 {len(parsed_actions) - len(consistent)} 个不一致动作")
         parsed_actions = consistent
+    add_timing(timings, "intent_gate", stage_start)
 
     # SelfCheckGPT 多采样一致性：仅在意图门禁通过后触发，不一致时标记需确认
+    stage_start = time.perf_counter()
     if safety_layers["selfcheck"] and selfcheck_wrapper and raw_actions and parsed_actions:
         sc_result = selfcheck_wrapper.check(
             user_input, raw_actions, llm_planner.plan, num_samples=app_config.SELFCHECK_SAMPLE_COUNT,
         )
+        add_timing(timings, "selfcheck", stage_start)
         if sc_result["risk_score"] >= selfcheck_wrapper.threshold:
             print(f"SelfCheckGPT: 多采样不一致 (risk={sc_result['risk_score']:.2f})")
             # 不直接 block，而是返回 require_confirm
@@ -625,28 +655,38 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
                 action_results=[], overall_decision="require_confirm",
                 input_guard_result=input_guard_result,
                 risk_result=risk_result,
+                timings_ms=finalize_timings(timings, request_start),
                 require_confirmation=True, confirmation_token=token,
             )
+    else:
+        add_timing(timings, "selfcheck", stage_start)
 
     # LLM 无法识别任何设备/动作时，先用本地关键词匹配兜底
     if not parsed_actions:
         mentioned_devices = mentioned_device_ids(user_input)
         if safety_layers["device_gate"] and "让" in user_input and len(mentioned_devices) > 1:
+            stage_start = time.perf_counter()
             risk_result = no_action_risk(
                 user_role, input_guard_result, "cross-device delegated control"
             )
+            add_timing(timings, "risk_scoring", stage_start)
+            stage_start = time.perf_counter()
             audit_logger.log(request_id, user_input, user_role, "", "",
                              input_guard_result, {"is_valid": False, "reasons": ["cross-device delegated control"]},
                              {}, {}, "block", ["cross-device delegated control"], risk_result)
+            add_timing(timings, "audit_logging", stage_start)
             return SmartCommandResponse(
                 request_id=request_id, user_id=user_id, user_role=user_role,
                 user_input=user_input, llm_actions=raw_actions, parsed_actions=[],
                 action_results=[], overall_decision="block",
                 input_guard_result=input_guard_result,
                 risk_result=risk_result,
+                timings_ms=finalize_timings(timings, request_start),
             )
 
+        stage_start = time.perf_counter()
         fallback_actions = fallback_matcher.match(user_input)
+        add_timing(timings, "fallback_matching", stage_start)
         if fallback_actions:
             parsed_actions = fallback_actions
         else:
@@ -659,6 +699,7 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
                 if device_loader.action_supported(device_id, "read")
             ]
             if is_read_query and readable_devices:
+                stage_start = time.perf_counter()
                 parsed_actions = [
                     {
                         "device_id": device_id,
@@ -669,19 +710,25 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
                     }
                     for device_id in readable_devices
                 ]
+                add_timing(timings, "read_fallback", stage_start)
             if not parsed_actions:
+                stage_start = time.perf_counter()
                 risk_result = no_action_risk(
                     user_role, input_guard_result, "no executable action recognized"
                 )
+                add_timing(timings, "risk_scoring", stage_start)
+                stage_start = time.perf_counter()
                 audit_logger.log(request_id, user_input, user_role, "", "",
                                  input_guard_result, {"is_valid": False, "reasons": ["LLM 和关键词匹配均无法识别"]},
                                  {}, {}, "block", ["未能识别任何可执行动作"], risk_result)
+                add_timing(timings, "audit_logging", stage_start)
                 return SmartCommandResponse(
                     request_id=request_id, user_id=user_id, user_role=user_role,
                     user_input=user_input, llm_actions=raw_actions, parsed_actions=[],
                     action_results=[], overall_decision="block",
                     input_guard_result=input_guard_result,
                     risk_result=risk_result,
+                    timings_ms=finalize_timings(timings, request_start),
                 )
 
     action_results = []
@@ -697,16 +744,19 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
         msg = ""
         new_state = None
 
+        stage_start = time.perf_counter()
         if safety_layers["fact_checker"]:
             is_valid, fact_risk, fact_reasons = fact_checker.check(
                 device_id, action, params, user_role, llm_reason
             )
         else:
             is_valid, fact_risk, fact_reasons = True, "skipped", ["fact_checker disabled"]
+        add_timing(timings, "fact_checker", stage_start)
         if not is_valid:
             msg = f"事实校验失败: {'; '.join(fact_reasons)}"
             all_passed = False
             fact_result = {"is_valid": False, "reasons": fact_reasons}
+            stage_start = time.perf_counter()
             risk_result = score_action(
                 user_role=user_role,
                 input_guard_result=input_guard_result,
@@ -721,9 +771,12 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
                 raw_actions=raw_actions,
                 parsed_actions=parsed_actions,
             )
+            add_timing(timings, "risk_scoring", stage_start)
+            stage_start = time.perf_counter()
             audit_logger.log(request_id, user_input, user_role, device_id, action,
                              input_guard_result, fact_result,
                              {}, {}, "block", [msg], risk_result)
+            add_timing(timings, "audit_logging", stage_start)
             action_results.append({
                 "device_id": device_id, "action": action, "params": params,
                 "policy_check": None, "physical_check": None, "fact_check": False,
@@ -733,19 +786,25 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
             })
             continue
 
+        stage_start = time.perf_counter()
         if safety_layers["policy_engine"]:
             pd, pr_id, pr_reason = policy_engine.check(user_role, device_type, action)
         else:
             pd, pr_id, pr_reason = "allow", "ablation_skip", "policy_engine disabled"
+        add_timing(timings, "policy_engine", stage_start)
         policy_pass = pd == "allow"
+        stage_start = time.perf_counter()
         if safety_layers["physical_checker"]:
             phys_decision, phys_reason, safe_alt = physical_checker.check(device_id, action, params)
         else:
             phys_decision, phys_reason, safe_alt = "pass", "physical_checker disabled", {}
+        add_timing(timings, "physical_checker", stage_start)
         phys_pass = phys_decision == "pass"
 
         if policy_pass and phys_pass:
+            stage_start = time.perf_counter()
             success, msg, new_state = sandbox.execute(device_id, action, params)
+            add_timing(timings, "sandbox_execution", stage_start)
             final = "allow" if success else "block"
             if not success:
                 all_passed = False
@@ -758,6 +817,7 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
         fact_result = {"is_valid": True}
         policy_result = {"decision": "allow" if policy_pass else "block", "reason": pr_reason}
         physical_result = {"decision": "pass" if phys_pass else "fail", "reason": phys_reason}
+        stage_start = time.perf_counter()
         risk_result = score_action(
             user_role=user_role,
             input_guard_result=input_guard_result,
@@ -772,6 +832,7 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
             raw_actions=raw_actions,
             parsed_actions=parsed_actions,
         )
+        add_timing(timings, "risk_scoring", stage_start)
         action_results.append({
             "device_id": device_id, "action": action, "params": params,
             "policy_check": policy_pass, "physical_check": phys_pass, "fact_check": True,
@@ -779,6 +840,7 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
             "device_state_after": new_state if success else None,
             "risk_result": risk_result,
         })
+        stage_start = time.perf_counter()
         audit_logger.log(
             request_id, user_input, user_role, device_id, action,
             input_guard_result, fact_result,
@@ -786,6 +848,7 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
             physical_result,
             final, [msg] if final == "block" else [], risk_result
         )
+        add_timing(timings, "audit_logging", stage_start)
 
     overall = "allow" if all_passed else "block"
     overall_risk = score_overall([
@@ -799,6 +862,7 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
         action_results=action_results, overall_decision=overall,
         input_guard_result=input_guard_result,
         risk_result=overall_risk,
+        timings_ms=finalize_timings(timings, request_start),
     )
 
 
@@ -807,10 +871,15 @@ async def process_smart_command(
     req: SmartCommandRequest,
     safety_layers: Optional[Dict[str, bool]] = None,
 ) -> SmartCommandResponse:
+    request_start = time.perf_counter()
+    timings: Dict[str, float] = {}
     safety_layers = safety_layers or get_safety_layers()
     request_id = f"SMART_{uuid.uuid4().hex[:8]}"
+    stage_start = time.perf_counter()
     user_role = policy_engine.get_user_role(req.user_id)
+    add_timing(timings, "user_role_lookup", stage_start)
 
+    stage_start = time.perf_counter()
     if safety_layers["input_guard"]:
         input_guard_result = input_guard.scan(req.user_input, user_role)
     else:
@@ -820,46 +889,60 @@ async def process_smart_command(
             "risk_level": "low",
             "details": ["input_guard disabled"],
         }
+    add_timing(timings, "input_guard", stage_start)
     input_guard_result["disabled_layers"] = disabled_layers(safety_layers)
 
     # high risk: 直接拒绝
     if input_guard_result["risk_level"] == "high":
+        stage_start = time.perf_counter()
         risk_result = no_action_risk(
             user_role, input_guard_result, "input guard high risk"
         )
+        add_timing(timings, "risk_scoring", stage_start)
+        stage_start = time.perf_counter()
         audit_logger.log(request_id, req.user_input, user_role, "", "",
                          input_guard_result, {}, {}, {}, "block",
                          ["输入安全检测: 高风险"], risk_result)
+        add_timing(timings, "audit_logging", stage_start)
         return SmartCommandResponse(
             request_id=request_id, user_id=req.user_id, user_role=user_role,
             user_input=req.user_input, llm_actions=[], parsed_actions=[],
             action_results=[], overall_decision="block",
             input_guard_result=input_guard_result,
             risk_result=risk_result,
+            timings_ms=finalize_timings(timings, request_start),
         )
 
     # medium risk: 需要人工确认
     if input_guard_result["risk_level"] == "medium":
         if input_guard_result.get("sensitive_operation") and user_role in {"student", "visitor"}:
+            stage_start = time.perf_counter()
             risk_result = no_action_risk(
                 user_role, input_guard_result, "low-privilege sensitive operation blocked"
             )
+            add_timing(timings, "risk_scoring", stage_start)
+            stage_start = time.perf_counter()
             audit_logger.log(request_id, req.user_input, user_role, "", "",
                              input_guard_result, {}, {}, {}, "block",
                              ["low-privilege sensitive operation blocked"], risk_result)
+            add_timing(timings, "audit_logging", stage_start)
             return SmartCommandResponse(
                 request_id=request_id, user_id=req.user_id, user_role=user_role,
                 user_input=req.user_input, llm_actions=[], parsed_actions=[],
                 action_results=[], overall_decision="block",
                 input_guard_result=input_guard_result,
                 risk_result=risk_result,
+                timings_ms=finalize_timings(timings, request_start),
             )
 
+        stage_start = time.perf_counter()
         risk_result = no_action_risk(
             user_role, input_guard_result, "medium input risk requires confirmation",
             policy_decision="allow",
         )
+        add_timing(timings, "risk_scoring", stage_start)
         token = uuid.uuid4().hex
+        stage_start = time.perf_counter()
         conn = get_connection()
         conn.execute(
             "INSERT INTO pending_confirmations (token, user_id, user_input, user_role, input_guard_result) VALUES (?,?,?,?,?)",
@@ -867,21 +950,26 @@ async def process_smart_command(
         )
         conn.commit()
         conn.close()
+        add_timing(timings, "confirmation_store", stage_start)
+        stage_start = time.perf_counter()
         audit_logger.log(request_id, req.user_input, user_role, "", "",
                          input_guard_result, {}, {"decision": "allow", "reason": "requires confirmation"},
                          {}, "require_confirm",
                          ["medium input risk requires confirmation"], risk_result)
+        add_timing(timings, "audit_logging", stage_start)
         return SmartCommandResponse(
             request_id=request_id, user_id=req.user_id, user_role=user_role,
             user_input=req.user_input, llm_actions=[], parsed_actions=[],
             action_results=[], overall_decision="require_confirm",
             input_guard_result=input_guard_result,
             risk_result=risk_result,
+            timings_ms=finalize_timings(timings, request_start),
             require_confirmation=True, confirmation_token=token,
         )
 
     return await execute_smart_pipeline(req.user_id, req.user_input, request_id,
-                                        user_role, input_guard_result, safety_layers)
+                                        user_role, input_guard_result, safety_layers,
+                                        timings=timings, request_start=request_start)
 
 
 @app.post("/api/smart_command", response_model=SmartCommandResponse)

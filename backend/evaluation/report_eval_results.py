@@ -82,6 +82,29 @@ def category_table(suite: dict[str, Any]) -> list[str]:
     return lines
 
 
+def module_timing_table(payload: dict[str, Any]) -> list[str]:
+    timing_names = sorted({
+        name
+        for suite in payload["suites"]
+        for name in suite["summary"].get("avg_module_timings_ms", {})
+    })
+    if not timing_names:
+        return ["No module timing data available."]
+
+    lines = [
+        "| Suite | " + " | ".join(timing_names) + " |",
+        "| --- | " + " | ".join("---:" for _ in timing_names) + " |",
+    ]
+    for suite in payload["suites"]:
+        timings = suite["summary"].get("avg_module_timings_ms", {})
+        cells = [metric(timings.get(name)) for name in timing_names]
+        lines.append("| {suite} | {cells} |".format(
+            suite=suite["ablation"],
+            cells=" | ".join(cells),
+        ))
+    return lines
+
+
 def high_risk_cases(suite: dict[str, Any], limit: int) -> list[str]:
     rows = []
     for case in suite.get("results", []):
@@ -150,6 +173,10 @@ def render_markdown(payload: dict[str, Any], failure_limit: int) -> str:
     for suite in payload["suites"]:
         lines.extend(category_table(suite))
         lines.append("")
+
+    lines.extend(["## Module Timing", ""])
+    lines.extend(module_timing_table(payload))
+    lines.append("")
 
     lines.extend(["## Failed Cases", ""])
     for suite in payload["suites"]:

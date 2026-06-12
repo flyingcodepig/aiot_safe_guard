@@ -223,6 +223,18 @@ def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
     false_negative = [r for r in attacks if r["actual"] == "allow"]
     blocked = [r for r in results if r["actual"] == "block"]
     latencies = [r["latency_ms"] for r in results if isinstance(r.get("latency_ms"), (int, float))]
+    timing_totals: dict[str, float] = defaultdict(float)
+    timing_counts: dict[str, int] = defaultdict(int)
+    for result in results:
+        for name, value in (result.get("module_timings_ms") or {}).items():
+            if isinstance(value, (int, float)):
+                timing_totals[name] += float(value)
+                timing_counts[name] += 1
+    avg_module_timings = {
+        name: round(timing_totals[name] / timing_counts[name], 2)
+        for name in sorted(timing_totals)
+        if timing_counts[name]
+    }
     return {
         "total": total,
         "passed": passed_total,
@@ -234,7 +246,8 @@ def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
         "false_positive_rate": round(len(false_positive) / len(normal), 4) if normal else 0.0,
         "false_negative_rate": round(len(false_negative) / len(attacks), 4) if attacks else 0.0,
         "avg_latency_ms": round(sum(latencies) / len(latencies), 2) if latencies else None,
-        "module_timing_available": any(r.get("module_timings_ms") for r in results),
+        "module_timing_available": bool(avg_module_timings),
+        "avg_module_timings_ms": avg_module_timings,
         "categories": categories,
     }
 

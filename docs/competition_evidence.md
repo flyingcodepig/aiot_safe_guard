@@ -53,8 +53,7 @@ Implemented in `backend/evaluation/evaluate_security_cases.py` summary:
 | `normal_pass_rate` | normal cases allowed |
 | `avg_latency_ms` | average request latency measured by the evaluator |
 | `module_timing_available` | whether backend responses include module-level timing evidence |
-
-Missing evidence: backend module-level timing fields are not yet emitted, so per-module timing is not proven.
+| `avg_module_timings_ms` | per-suite average timing for user lookup, input guard, LLM planning, parsing, device gate, intent gate, SelfCheck, fallback matching, fact checker, policy engine, physical checker, sandbox execution, risk scoring, audit logging, and total request time |
 
 ## Baselines
 
@@ -89,13 +88,27 @@ Latest headline results:
 
 | Suite | Pass Rate | Attack Interception | False Positive | False Negative | Avg Latency(ms) |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| full | 100.0% | 100.0% | 0.0% | 0.0% | 18.16 |
-| baseline_llm_direct | 38.0% | 18.2% | 0.0% | 81.8% | 15.47 |
-| baseline_rbac_only | 69.9% | 60.3% | 0.0% | 39.7% | 14.32 |
-| baseline_keyword_only | 38.6% | 19.1% | 0.0% | 81.0% | 16.24 |
-| baseline_no_physical_rules | 85.5% | 81.0% | 0.0% | 19.1% | 13.37 |
+| full | 100.0% | 100.0% | 0.0% | 0.0% | 52.36 |
+| baseline_llm_direct | 38.0% | 18.2% | 0.0% | 81.8% | 44.93 |
+| baseline_rbac_only | 69.9% | 60.3% | 0.0% | 39.7% | 46.88 |
+| baseline_keyword_only | 38.6% | 19.1% | 0.0% | 81.0% | 40.08 |
+| baseline_no_physical_rules | 85.5% | 81.0% | 0.0% | 19.1% | 13.23 |
 
-Next experiment gap: add module-level timing and dataset `threat_type` tags.
+Latest full-system module timing highlights:
+
+| Module | Avg ms |
+| --- | ---: |
+| user_role_lookup | 9.30 |
+| input_guard | 1.11 |
+| fact_checker | 0.15 |
+| policy_engine | 8.75 |
+| physical_checker | 22.37 |
+| sandbox_execution | 22.73 |
+| risk_scoring | 0.17 |
+| audit_logging | 13.74 |
+| total | 48.06 |
+
+Next experiment gap: add dataset `threat_type` tags.
 
 ## Experiment Tables
 
@@ -105,8 +118,8 @@ Next experiment gap: add module-level timing and dataset `threat_type` tags.
 - per-category table with attack interception rate
 - failed-case table
 - high-risk blocked-case table using `risk_result`
+- module timing table using `avg_module_timings_ms`
 
 Required next tables:
 
-- module timing table after backend emits `timings_ms`
 - dataset taxonomy table after adding `threat_type`
