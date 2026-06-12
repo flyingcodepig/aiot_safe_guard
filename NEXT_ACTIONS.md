@@ -1,10 +1,10 @@
 # Next Actions
 
-Updated: 2026-06-12 21:40 +08:00
+Updated: 2026-06-12 22:02 +08:00
 
 ## Active Focus
 
-Move from engineering features into competition evidence: frozen final-test evaluation, sharper ablations, demo trace, and report-ready tables.
+Move from engineering features into competition evidence: frozen final-test evaluation, sharper ablations, protocol-aware demo trace, and report-ready tables.
 
 ## Immediate Tasks
 
@@ -17,7 +17,7 @@ Move from engineering features into competition evidence: frozen final-test eval
    - Add sharper cases that isolate InputGuard and SelfCheck in offline and online/model-backed settings.
 
 3. Improve the demo trace.
-   - Target: frontend shows natural-language input, LLM plan, layer decisions, risk score components/top factors, execution result, device state, and audit replay.
+   - Target: frontend shows natural-language input, LLM plan, layer decisions, risk score components/top factors, simulated MQTT/HTTP transport, execution result, device state, and audit replay.
 
 4. Review `docs/sandbox_report.md`.
    - Target: decide whether it is a source document to keep tracked or a generated/local artifact.
@@ -27,6 +27,13 @@ Move from engineering features into competition evidence: frozen final-test eval
 - Added reproducible formal dataset generator with split metadata and `threat_type` taxonomy.
 - Generated 3666 formal cases: 166 core regression, 1000 development, 500 validation, and 2000 frozen final-test.
 - Added manifest hashes and dataset README with the no-tuning final-test protocol.
+- Added evaluation/report support for `threat_type` breakdown tables.
+- Added simulated MQTT/HTTP device drivers and exposed `transport_result` through command responses and audit export.
+
+## Remaining Driver Work
+
+- Frontend should render the transport hop in the demo trace.
+- Optional later extension: add a fake MQTT broker/webhook receiver, retry/failure simulation, and driver-failure safety tests.
 
 ## Not Now
 

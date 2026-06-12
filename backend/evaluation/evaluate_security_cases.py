@@ -8,7 +8,8 @@ Usage:
 
 The script is intentionally lightweight: without --base-url it prints dataset
 coverage; with --base-url it executes cases against the running FastAPI app and
-emits overall/category pass rates that can be reused for ablation tables.
+emits overall/category/threat-type pass rates that can be reused for ablation
+tables.
 """
 from __future__ import annotations
 
@@ -72,12 +73,23 @@ def load_cases(path: Path) -> list[dict[str, Any]]:
 
 def summarize_cases(cases: list[dict[str, Any]]) -> dict[str, Any]:
     by_category: dict[str, int] = defaultdict(int)
+    by_threat_type: dict[str, int] = defaultdict(int)
+    by_split: dict[str, int] = defaultdict(int)
     for case in cases:
         by_category[case.get("category", "uncategorized")] += 1
-    return {
+        if "threat_type" in case:
+            by_threat_type[case["threat_type"]] += 1
+        if "dataset_split" in case:
+            by_split[case["dataset_split"]] += 1
+    summary = {
         "total": len(cases),
         "categories": dict(sorted(by_category.items())),
     }
+    if by_threat_type:
+        summary["threat_types"] = dict(sorted(by_threat_type.items()))
+    if by_split:
+        summary["dataset_splits"] = dict(sorted(by_split.items()))
+    return summary
 
 
 def post_json(client: httpx.Client, path: str, payload: dict[str, Any], timeout: float | None = None) -> dict[str, Any]:
@@ -90,6 +102,8 @@ def failed_case(case: dict[str, Any], error: str) -> dict[str, Any]:
     return {
         "id": case["id"],
         "category": case.get("category", "uncategorized"),
+        "threat_type": case.get("threat_type", case.get("category", "uncategorized")),
+        "dataset_split": case.get("dataset_split"),
         "expected": case["expected_decision"],
         "actual": "error",
         "passed": False,
@@ -133,6 +147,8 @@ def run_case(client: httpx.Client, case: dict[str, Any], request_timeout: float)
     return {
         "id": case["id"],
         "category": case.get("category", "uncategorized"),
+        "threat_type": case.get("threat_type", case.get("category", "uncategorized")),
+        "dataset_split": case.get("dataset_split"),
         "expected": expected,
         "actual": actual,
         "passed": passed,
@@ -185,40 +201,50 @@ def run_suite(
     }
 
 
-def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
-    category_totals: dict[str, int] = defaultdict(int)
-    category_passed: dict[str, int] = defaultdict(int)
-    category_blocked_attacks: dict[str, int] = defaultdict(int)
-    category_attack_totals: dict[str, int] = defaultdict(int)
-    for result in results:
-        category = result["category"]
-        category_totals[category] += 1
-        if result["passed"]:
-            category_passed[category] += 1
-        if category != "normal":
-            category_attack_totals[category] += 1
-            if result["actual"] == "block":
-                category_blocked_attacks[category] += 1
+def is_normal_result(result: dict[str, Any]) -> bool:
+    return result.get("category") == "normal"
 
-    categories = {}
-    for category, total in sorted(category_totals.items()):
-        passed = category_passed[category]
+
+def summarize_breakdown(results: list[dict[str, Any]], field: str) -> dict[str, Any]:
+    totals: dict[str, int] = defaultdict(int)
+    passed_counts: dict[str, int] = defaultdict(int)
+    blocked_attacks: dict[str, int] = defaultdict(int)
+    attack_totals: dict[str, int] = defaultdict(int)
+    for result in results:
+        name = result.get(field) or "uncategorized"
+        totals[name] += 1
+        if result["passed"]:
+            passed_counts[name] += 1
+        if not is_normal_result(result):
+            attack_totals[name] += 1
+            if result["actual"] == "block":
+                blocked_attacks[name] += 1
+
+    breakdown = {}
+    for name, total in sorted(totals.items()):
+        passed = passed_counts[name]
         stats = {
             "total": total,
             "passed": passed,
             "failed": total - passed,
             "pass_rate": round(passed / total, 4) if total else 0.0,
         }
-        if category != "normal":
-            blocked = category_blocked_attacks[category]
-            attack_total = category_attack_totals[category]
+        if attack_totals[name]:
+            blocked = blocked_attacks[name]
+            attack_total = attack_totals[name]
             stats["attack_interception_rate"] = round(blocked / attack_total, 4) if attack_total else 0.0
-        categories[category] = stats
+        breakdown[name] = stats
+    return breakdown
+
+
+def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
+    categories = summarize_breakdown(results, "category")
+    threat_types = summarize_breakdown(results, "threat_type")
 
     passed_total = sum(1 for r in results if r["passed"])
     total = len(results)
-    normal = [r for r in results if r["category"] == "normal"]
-    attacks = [r for r in results if r["category"] != "normal"]
+    normal = [r for r in results if is_normal_result(r)]
+    attacks = [r for r in results if not is_normal_result(r)]
     false_positive = [r for r in normal if r["actual"] == "block"]
     false_negative = [r for r in attacks if r["actual"] == "allow"]
     blocked = [r for r in results if r["actual"] == "block"]
@@ -249,6 +275,7 @@ def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
         "module_timing_available": bool(avg_module_timings),
         "avg_module_timings_ms": avg_module_timings,
         "categories": categories,
+        "threat_types": threat_types,
     }
 
 

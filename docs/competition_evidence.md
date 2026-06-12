@@ -15,7 +15,7 @@ It is not a generic IoT dashboard. The core security problem is that an LLM-Agen
    - Evidence to show: PolicyEngine, PhysicalChecker, parameter range checks, interlock checks, rate-limit checks, policy/physical ablation drops.
 
 3. Multi-layer audit and human confirmation for AIoT control chains
-   - Evidence to show: input scan result, LLM plan, parsed actions, per-layer decisions, risk score, final decision, audit export, pending confirmation records.
+   - Evidence to show: input scan result, LLM plan, parsed actions, per-layer decisions, risk score, simulated MQTT/HTTP transport result, final decision, audit export, pending confirmation records.
 
 ## Dataset Coverage
 
@@ -85,6 +85,21 @@ Implemented in `backend/evaluation/evaluate_security_cases.py` summary:
 | `module_timing_available` | whether backend responses include module-level timing evidence |
 | `avg_module_timings_ms` | per-suite average timing for user lookup, input guard, LLM planning, parsing, device gate, intent gate, SelfCheck, fallback matching, fact checker, policy engine, physical checker, sandbox execution, risk scoring, audit logging, and total request time |
 
+## Simulated Device Drivers
+
+Implemented evidence:
+
+| Layer | Evidence | Purpose |
+| --- | --- | --- |
+| MQTT simulation | `backend/device_driver.py` `SimulatedMqttDriver` | Models command publish to topic `aiot/{device_type}/{device_id}/command` for light/fan/instrument-like devices |
+| HTTP simulation | `backend/device_driver.py` `SimulatedHttpDriver` | Models POST to a device action endpoint for alarm, door lock, and camera-like devices |
+| Sandbox integration | `backend/sandbox.py` | Approved commands update virtual state and return `transport_result` for the simulated protocol hop |
+| API/audit evidence | `/api/smart_command`, `/api/command`, `/api/logs`, `/api/logs/export` | Shows protocol, endpoint, method, payload, ack, and simulated latency in response/audit surfaces |
+
+This is still a simulated driver layer, not real hardware connectivity. It
+closes the demo loop enough to show the trusted gateway's final handoff without
+requiring physical devices.
+
 ## Baselines
 
 Configured profiles in `backend/evaluation/evaluate_security_cases.py`:
@@ -118,25 +133,25 @@ Latest headline results:
 
 | Suite | Pass Rate | Attack Interception | False Positive | False Negative | Avg Latency(ms) |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| full | 100.0% | 100.0% | 0.0% | 0.0% | 52.36 |
-| baseline_llm_direct | 38.0% | 18.2% | 0.0% | 81.8% | 44.93 |
-| baseline_rbac_only | 69.9% | 60.3% | 0.0% | 39.7% | 46.88 |
-| baseline_keyword_only | 38.6% | 19.1% | 0.0% | 81.0% | 40.08 |
-| baseline_no_physical_rules | 85.5% | 81.0% | 0.0% | 19.1% | 13.23 |
+| full | 100.0% | 100.0% | 0.0% | 0.0% | 24.26 |
+| baseline_llm_direct | 38.0% | 18.2% | 0.0% | 81.8% | 19.95 |
+| baseline_rbac_only | 69.9% | 60.3% | 0.0% | 39.7% | 18.39 |
+| baseline_keyword_only | 38.6% | 19.1% | 0.0% | 81.0% | 20.51 |
+| baseline_no_physical_rules | 85.5% | 81.0% | 0.0% | 19.1% | 16.58 |
 
 Latest full-system module timing highlights:
 
 | Module | Avg ms |
 | --- | ---: |
-| user_role_lookup | 9.30 |
-| input_guard | 1.11 |
-| fact_checker | 0.15 |
-| policy_engine | 8.75 |
-| physical_checker | 22.37 |
-| sandbox_execution | 22.73 |
-| risk_scoring | 0.17 |
-| audit_logging | 13.74 |
-| total | 48.06 |
+| user_role_lookup | 4.36 |
+| input_guard | 0.33 |
+| fact_checker | 0.02 |
+| policy_engine | 3.10 |
+| physical_checker | 8.73 |
+| sandbox_execution | 11.08 |
+| risk_scoring | 0.06 |
+| audit_logging | 7.31 |
+| total | 21.72 |
 
 Next experiment gap: execute the frozen final-test split after feature freeze and
 report it separately from development/regression results.
@@ -147,6 +162,7 @@ report it separately from development/regression results.
 
 - suite summary table with pass rate, attack interception, false positive, false negative, normal pass, and average latency
 - per-category table with attack interception rate
+- per-threat-type table with pass rate and attack interception rate when cases contain `threat_type`
 - failed-case table
 - high-risk blocked-case table using `risk_result`
 - module timing table using `avg_module_timings_ms`

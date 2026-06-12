@@ -31,3 +31,6 @@
 - Added a Module Timing table to the generated Markdown experiment report.
 - Added a reproducible formal safety dataset generator with core, development, validation, and frozen final-test splits.
 - Generated a 3666-case formal dataset with 2000 frozen final-test cases, threat-type taxonomy, split metadata, SHA-256 manifest, and reporting protocol documentation.
+- Added threat-type preservation and Threat Type Breakdown tables to evaluation JSON/Markdown reports.
+- Added simulated MQTT/HTTP device drivers for the final gateway-to-device handoff.
+- Exposed simulated protocol `transport_result` through command responses, smart-command action results, audit logs, and JSON/CSV audit export.

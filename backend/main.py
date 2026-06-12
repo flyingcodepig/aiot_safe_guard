@@ -474,7 +474,7 @@ async def process_command(req: CommandRequest, request: Request):
             risk_result=risk_result,
         )
 
-    success, msg, new_state = sandbox.execute(req.device_id, req.action, req.params or {})
+    success, msg, new_state, transport_result = sandbox.execute(req.device_id, req.action, req.params or {})
     if not success:
         block_reasons.append(f"执行失败: {msg}")
     final_decision = "allow" if success else "block"
@@ -484,7 +484,7 @@ async def process_command(req: CommandRequest, request: Request):
     )
     audit_logger.log(request_id, req.user_input, user_role, req.device_id, req.action,
                      guard_result, {"is_valid": True}, policy_result, physical_result,
-                     final_decision, block_reasons, risk_result)
+                     final_decision, block_reasons, risk_result, transport_result if success else None)
     return CommandResponse(
         request_id=request_id, user_id=req.user_id, user_role=user_role,
         device_id=req.device_id, action=req.action, final_decision=final_decision,
@@ -492,6 +492,7 @@ async def process_command(req: CommandRequest, request: Request):
         device_state_after=new_state if success else None,
         block_reasons=block_reasons, message=msg,
         risk_result=risk_result,
+        transport_result=transport_result if success else None,
     )
 
 
@@ -554,7 +555,7 @@ async def export_logs(
         output = io.StringIO()
         fieldnames = [
             "timestamp", "request_id", "user_role", "target_device", "target_action",
-            "final_decision", "risk_result", "block_reasons", "user_input",
+            "final_decision", "risk_result", "transport_result", "block_reasons", "user_input",
         ]
         writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
@@ -743,6 +744,7 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
         success = False
         msg = ""
         new_state = None
+        transport_result = None
 
         stage_start = time.perf_counter()
         if safety_layers["fact_checker"]:
@@ -783,6 +785,7 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
                 "executed": False, "final_decision": "block", "message": msg,
                 "device_state_after": None,
                 "risk_result": risk_result,
+                "transport_result": None,
             })
             continue
 
@@ -803,7 +806,7 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
 
         if policy_pass and phys_pass:
             stage_start = time.perf_counter()
-            success, msg, new_state = sandbox.execute(device_id, action, params)
+            success, msg, new_state, transport_result = sandbox.execute(device_id, action, params)
             add_timing(timings, "sandbox_execution", stage_start)
             final = "allow" if success else "block"
             if not success:
@@ -839,6 +842,7 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
             "executed": success, "final_decision": final, "message": msg,
             "device_state_after": new_state if success else None,
             "risk_result": risk_result,
+            "transport_result": transport_result if success else None,
         })
         stage_start = time.perf_counter()
         audit_logger.log(
@@ -846,7 +850,8 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
             input_guard_result, fact_result,
             policy_result,
             physical_result,
-            final, [msg] if final == "block" else [], risk_result
+            final, [msg] if final == "block" else [], risk_result,
+            transport_result if success else None
         )
         add_timing(timings, "audit_logging", stage_start)
 

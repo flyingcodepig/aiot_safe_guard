@@ -82,6 +82,34 @@ def category_table(suite: dict[str, Any]) -> list[str]:
     return lines
 
 
+def threat_type_table(suite: dict[str, Any]) -> list[str]:
+    threat_types = suite["summary"].get("threat_types", {})
+    lines = [
+        f"### {suite['ablation']}",
+        "",
+    ]
+    if not threat_types:
+        lines.append("No threat-type breakdown available.")
+        return lines
+
+    lines.extend([
+        "| Threat Type | Total | Passed | Failed | Pass Rate | Attack Interception |",
+        "| --- | ---: | ---: | ---: | ---: | ---: |",
+    ])
+    for threat_type, stats in threat_types.items():
+        lines.append(
+            "| {threat_type} | {total} | {passed} | {failed} | {rate} | {attack} |".format(
+                threat_type=threat_type,
+                total=stats["total"],
+                passed=stats["passed"],
+                failed=stats["failed"],
+                rate=percent(stats["pass_rate"]),
+                attack=percent_or_na(stats.get("attack_interception_rate")),
+            )
+        )
+    return lines
+
+
 def module_timing_table(payload: dict[str, Any]) -> list[str]:
     timing_names = sorted({
         name
@@ -120,15 +148,15 @@ def high_risk_cases(suite: dict[str, Any], limit: int) -> list[str]:
         return lines
 
     lines.extend([
-        "| Case | Category | Decision | Risk | Top Factors |",
-        "| --- | --- | --- | ---: | --- |",
+        "| Case | Category | Threat Type | Decision | Risk | Top Factors |",
+        "| --- | --- | --- | --- | ---: | --- |",
     ])
     for _, case, risk in rows[:limit]:
         factors = "; ".join(
             f"{item.get('name')}={item.get('score')}" for item in risk.get("top_factors", [])
         )
         lines.append(
-            f"| {case['id']} | {case['category']} | {case['actual']} | {metric(risk.get('score'))} | {factors or '-'} |"
+            f"| {case['id']} | {case['category']} | {case.get('threat_type', '-')} | {case['actual']} | {metric(risk.get('score'))} | {factors or '-'} |"
         )
     if len(rows) > limit:
         lines.append(f"| ... | ... | ... | ... | {len(rows) - limit} more |")
@@ -143,12 +171,12 @@ def failed_cases(suite: dict[str, Any], limit: int) -> list[str]:
         return lines
 
     lines.extend([
-        "| Case | Category | Expected | Actual |",
-        "| --- | --- | --- | --- |",
+        "| Case | Category | Threat Type | Expected | Actual |",
+        "| --- | --- | --- | --- | --- |",
     ])
     for case in failed[:limit]:
         lines.append(
-            f"| {case['id']} | {case['category']} | {case['expected']} | {case['actual']} |"
+            f"| {case['id']} | {case['category']} | {case.get('threat_type', '-')} | {case['expected']} | {case['actual']} |"
         )
     if len(failed) > limit:
         lines.append(f"| ... | ... | ... | {len(failed) - limit} more |")
@@ -172,6 +200,11 @@ def render_markdown(payload: dict[str, Any], failure_limit: int) -> str:
     ]
     for suite in payload["suites"]:
         lines.extend(category_table(suite))
+        lines.append("")
+
+    lines.extend(["## Threat Type Breakdown", ""])
+    for suite in payload["suites"]:
+        lines.extend(threat_type_table(suite))
         lines.append("")
 
     lines.extend(["## Module Timing", ""])

@@ -23,6 +23,7 @@ class CommandResponse(BaseModel):
     block_reasons: List[str]
     message: str
     risk_result: Optional[Dict[str, Any]] = None
+    transport_result: Optional[Dict[str, Any]] = None
 
 class AuditLogEntry(BaseModel):
     id: Optional[int]
@@ -36,6 +37,7 @@ class AuditLogEntry(BaseModel):
     policy_result: Optional[str]
     physical_result: Optional[str]
     risk_result: Optional[str] = None
+    transport_result: Optional[str] = None
     final_decision: str
     block_reasons: Optional[str]
     timestamp: Optional[datetime]

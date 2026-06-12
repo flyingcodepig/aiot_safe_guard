@@ -18,6 +18,8 @@ cd D:\aiot_safe_guard\backend
 ..\somethingelse\venv\Scripts\python.exe -m py_compile audit.py database.py main.py models.py risk_scoring.py test_risk_scoring.py
 ..\somethingelse\venv\Scripts\python.exe test_device_mention.py
 ..\somethingelse\venv\Scripts\python.exe test_risk_scoring.py
+..\somethingelse\venv\Scripts\python.exe test_device_driver.py
+..\somethingelse\venv\Scripts\python.exe test_transport_driver_api.py
 ```
 
 ## Dataset Summary
@@ -82,7 +84,7 @@ Default suites now include:
 - `no_selfcheck`
 
 The Markdown report includes pass rate, attack interception, false positive, false negative, normal pass rate, average latency, per-category tables, failed cases, and high-risk blocked cases.
-It also includes a Module Timing table derived from smart-command `timings_ms` and suite-level `avg_module_timings_ms`.
+It also includes a Threat Type Breakdown table when cases/results include `threat_type`, plus a Module Timing table derived from smart-command `timings_ms` and suite-level `avg_module_timings_ms`.
 
 For post-freeze reporting on the formal final split, replace `--cases
 evaluation\security_cases_expanded.json` with `--cases
@@ -108,6 +110,22 @@ Then use `fastapi.testclient.TestClient` to send `/api/smart_command` and verify
 - `/api/logs` `risk_result`
 - `/api/logs/export?format=json` `risk_result`
 - `/api/logs/export?format=csv` `risk_result` header/field
+
+## Check Simulated Driver Surface
+
+```powershell
+cd D:\aiot_safe_guard\backend
+..\somethingelse\venv\Scripts\python.exe test_device_driver.py
+..\somethingelse\venv\Scripts\python.exe test_transport_driver_api.py
+```
+
+Approved command responses should expose `transport_result` in each executed
+action. Audit logs and JSON/CSV export should also include `transport_result`.
+The current drivers are simulated:
+
+- MQTT-like devices publish to `aiot/{device_type}/{device_id}/command`.
+- HTTP-like devices POST to `http://simulated-device-bus.local/devices/{device_id}/actions`.
+- No real MQTT broker, webhook server, retry queue, or hardware adapter is required for this evidence layer.
 
 ## Render Evaluation Tables
 

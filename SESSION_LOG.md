@@ -62,3 +62,13 @@
 - Added `backend/evaluation/datasets/README.md` documenting the reporting protocol: tune on core/dev, use validation sparingly, and do not tune on official final-test failures.
 - Updated `docs/competition_evidence.md` with formal split counts, threat taxonomy counts, manifest hash policy, and the next final-test execution gap.
 - Verification: formal dataset generator py_compile passed; small smoke generation passed; final-test case file loaded successfully through `evaluation/evaluate_security_cases.py`.
+
+## 2026-06-12 22:02 +08:00
+
+- Confirmed the project previously had only FastAPI APIs plus the virtual sandbox state update path, not an MQTT/HTTP device driver layer.
+- Added `backend/device_driver.py` with simulated MQTT publish and HTTP POST drivers, selected by device type.
+- Reworked `backend/sandbox.py` so approved actions still update virtual device state and now also return `transport_result` for the simulated protocol handoff.
+- Exposed `transport_result` through direct command responses, smart-command action results, audit logs, and JSON/CSV audit export.
+- Added `test_device_driver.py` and `test_transport_driver_api.py` covering driver selection, sandbox transport output, and API/audit/export visibility.
+- Extended evaluation results and Markdown reports with `threat_type` preservation and a Threat Type Breakdown table.
+- Verification: py_compile passed; `test_device_driver.py`, `test_device_mention.py`, `test_risk_scoring.py`, and `test_transport_driver_api.py` passed; managed 11-suite expanded evaluation completed with full 166/166.
