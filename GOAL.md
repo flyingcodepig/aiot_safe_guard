@@ -1,23 +1,45 @@
 # AIoT Safe Guard Goal
 
-Objective: raise AIoT Safe Guard from an engineering prototype to a competition-grade security work benchmarked against first-prize information security projects.
+## Primary Positioning
 
-## Target Outcomes
+将本项目明确定位为“面向 LLM-Agent 控制 AIoT 的可信指令安全网关”，补齐其作为信息安全竞赛作品的核心短板：作品定义、创新点、数据集、评价指标、基线对比、消融实验和实验表格。
 
-- Reproducible engineering baseline: one-command setup, health checks, seeded data, and repeatable evaluation.
-- Safety evaluation corpus: 150-300 categorized cases covering normal use, prompt injection, privilege abuse, hallucination, physical bounds, interlocks, and rate abuse.
-- Quantitative evaluation: per-category pass rate, false positive rate, false negative rate, blocking rate, latency, and module timing.
-- Ablation experiments: compare the full system against variants with each safety layer disabled.
-- Risk scoring: a documented AIoT command risk score combining input risk, device criticality, permission risk, parameter distance, interlock state, and LLM consistency.
-- Demo closure: natural language input, LLM plan, layer-by-layer decision trace, risk score, execution result, device state, and audit replay.
-- Version checkpoints: commit at the end of each completed stage to support rollback.
+## Core Security Problem
+
+本作品不是普通 IoT 控制台，而是解决 LLM-Agent 控制 AIoT 设备时可能出现的可信执行问题：
+
+- 提示注入：用户诱导模型忽略安全策略、绕过审计或进入虚假维护模式。
+- 角色伪装与越权控制：低权限用户伪装教师、管理员或系统身份控制高危设备。
+- 幻觉设备与错误动作：LLM 生成不存在的设备、不支持的动作或与用户意图不一致的控制计划。
+- 参数越界：亮度、风速、温度等控制参数超出设备安全范围。
+- 物理冲突：报警互锁、速率限制、前置条件不满足等物理安全约束被破坏。
+- 审计不可追溯：缺少输入、计划、决策、风险和执行结果的链路证据。
+
+## Named Innovation Points
+
+1. 语义一致性驱动的 LLM-IoT 指令幻觉门禁
+   - 结合设备提及、动作支持、意图一致性和事实校验，过滤 LLM 幻觉设备、错误动作和不可信计划。
+
+2. RBAC 与物理约束融合的安全决策引擎
+   - 将角色权限、设备能力、参数边界、互锁状态和速率限制统一纳入控制前决策。
+
+3. 面向 AIoT 控制链路的多层审计与人工确认机制
+   - 记录输入风险、LLM 计划、各层决策、风险评分、执行状态和人工确认结果，支持安全复盘。
+
+## Required Competition Evidence
+
+- 正式测试数据集：150-300 条用例，覆盖正常操作、提示注入、角色伪装、越权、幻觉设备、错误动作、参数越界、互锁冲突、速率滥用。
+- 评价指标体系：拦截率、误报率、漏报率、正常通过率、分类别通过率、平均响应延迟、各模块耗时。
+- 基线对比：LLM 直接执行、仅 RBAC、仅关键词检测、无物理规则、完整系统。
+- 消融实验：分别关闭 InputGuard、设备门禁、FactChecker、PolicyEngine、PhysicalChecker、SelfCheck，证明每层有实际贡献。
+- 实验表格：各类攻击拦截率、正常请求误拦率、消融实验结果、平均延迟、高风险操作拦截案例。
 
 ## Route
 
-1. Build the project automation baseline.
-2. Expand and run the safety evaluation dataset.
-3. Add ablation switches and generate comparison results.
-4. Add command risk scoring.
-5. Improve frontend layer-by-layer visualization.
-6. Add an MQTT/HTTP virtual device driver layer.
-7. Prepare final report and presentation materials.
+1. 固化作品定义、核心问题和 3 个创新点。
+2. 将 166 条扩展评测集整理为正式数据集说明，并补齐缺失类别标签或用例。
+3. 扩展评价脚本，输出竞赛所需指标和实验表格。
+4. 增加基线对比配置并生成完整基线结果。
+5. 扩展消融实验到 InputGuard、设备门禁、FactChecker、PolicyEngine、PhysicalChecker、SelfCheck。
+6. 补充高风险案例表、延迟表和模块耗时证据。
+7. 将风险评分、审计回放和人工确认机制整理为演示闭环与报告材料。

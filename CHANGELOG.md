@@ -22,3 +22,8 @@
 - Added explainable AIoT command risk scoring across input risk, device criticality, permission risk, parameter boundaries, physical/interlock state, and model consistency.
 - Returned `risk_result` from `/api/smart_command`, each smart `action_result`, and direct `/api/command` responses.
 - Persisted `risk_result` in audit logs and exposed it through `/api/logs` plus JSON/CSV `/api/logs/export`.
+- Re-scoped the project goal as a trusted instruction security gateway for LLM-Agent controlled AIoT.
+- Added a competition evidence map covering the work definition, three named innovation points, dataset coverage, metrics, baselines, ablations, and experiment-table gaps.
+- Added competition metrics to evaluation summaries: block rate, normal pass rate, attack interception rate, false positive rate, false negative rate, and average latency.
+- Added named baseline profiles for LLM direct execution, RBAC-only, keyword/device-gate-only, and no-physical-rules comparisons.
+- Regenerated the expanded experiment snapshot and Markdown report for full system, four baselines, and six ablations.

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,32 @@ DEFAULT_CASES = Path(__file__).with_name("security_cases_core.json")
 
 ABLATION_PROFILES = {
     "full": [],
+    "baseline_llm_direct": [
+        "input_guard",
+        "device_gate",
+        "intent_gate",
+        "fact_checker",
+        "policy_engine",
+        "physical_checker",
+        "selfcheck",
+    ],
+    "baseline_rbac_only": [
+        "input_guard",
+        "device_gate",
+        "intent_gate",
+        "fact_checker",
+        "physical_checker",
+        "selfcheck",
+    ],
+    "baseline_keyword_only": [
+        "input_guard",
+        "intent_gate",
+        "fact_checker",
+        "policy_engine",
+        "physical_checker",
+        "selfcheck",
+    ],
+    "baseline_no_physical_rules": ["physical_checker"],
     "no_input_guard": ["input_guard"],
     "no_device_gate": ["device_gate"],
     "no_intent_gate": ["intent_gate"],
@@ -68,6 +95,8 @@ def failed_case(case: dict[str, Any], error: str) -> dict[str, Any]:
         "passed": False,
         "observed_decisions": ["error"],
         "error": error,
+        "latency_ms": None,
+        "module_timings_ms": {},
         "response": None,
     }
 
@@ -84,15 +113,17 @@ def run_case(client: httpx.Client, case: dict[str, Any], request_timeout: float)
 
         repeat = int(case.get("repeat", 1))
         responses = []
+        latencies = []
         for _ in range(max(1, repeat)):
-            responses.append(
-                post_json(
-                    client,
-                    "/api/smart_command",
-                    {"user_id": case["user_id"], "user_input": case["user_input"]},
-                    timeout=request_timeout,
-                )
+            started = time.perf_counter()
+            response = post_json(
+                client,
+                "/api/smart_command",
+                {"user_id": case["user_id"], "user_input": case["user_input"]},
+                timeout=request_timeout,
             )
+            latencies.append((time.perf_counter() - started) * 1000)
+            responses.append(response)
     except Exception as exc:  # noqa: BLE001 - record per-case evaluation failure
         return failed_case(case, str(exc))
 
@@ -106,6 +137,8 @@ def run_case(client: httpx.Client, case: dict[str, Any], request_timeout: float)
         "actual": actual,
         "passed": passed,
         "observed_decisions": [r.get("overall_decision", "error") for r in responses],
+        "latency_ms": round(sum(latencies) / len(latencies), 2) if latencies else None,
+        "module_timings_ms": responses[-1].get("timings_ms", {}) if responses else {},
         "response": responses[-1] if responses else None,
     }
 
@@ -155,29 +188,53 @@ def run_suite(
 def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
     category_totals: dict[str, int] = defaultdict(int)
     category_passed: dict[str, int] = defaultdict(int)
+    category_blocked_attacks: dict[str, int] = defaultdict(int)
+    category_attack_totals: dict[str, int] = defaultdict(int)
     for result in results:
         category = result["category"]
         category_totals[category] += 1
         if result["passed"]:
             category_passed[category] += 1
+        if category != "normal":
+            category_attack_totals[category] += 1
+            if result["actual"] == "block":
+                category_blocked_attacks[category] += 1
 
     categories = {}
     for category, total in sorted(category_totals.items()):
         passed = category_passed[category]
-        categories[category] = {
+        stats = {
             "total": total,
             "passed": passed,
             "failed": total - passed,
             "pass_rate": round(passed / total, 4) if total else 0.0,
         }
+        if category != "normal":
+            blocked = category_blocked_attacks[category]
+            attack_total = category_attack_totals[category]
+            stats["attack_interception_rate"] = round(blocked / attack_total, 4) if attack_total else 0.0
+        categories[category] = stats
 
     passed_total = sum(1 for r in results if r["passed"])
     total = len(results)
+    normal = [r for r in results if r["category"] == "normal"]
+    attacks = [r for r in results if r["category"] != "normal"]
+    false_positive = [r for r in normal if r["actual"] == "block"]
+    false_negative = [r for r in attacks if r["actual"] == "allow"]
+    blocked = [r for r in results if r["actual"] == "block"]
+    latencies = [r["latency_ms"] for r in results if isinstance(r.get("latency_ms"), (int, float))]
     return {
         "total": total,
         "passed": passed_total,
         "failed": total - passed_total,
         "pass_rate": round(passed_total / total, 4) if total else 0.0,
+        "block_rate": round(len(blocked) / total, 4) if total else 0.0,
+        "normal_pass_rate": round(sum(1 for r in normal if r["actual"] == "allow") / len(normal), 4) if normal else 0.0,
+        "attack_interception_rate": round(sum(1 for r in attacks if r["actual"] == "block") / len(attacks), 4) if attacks else 0.0,
+        "false_positive_rate": round(len(false_positive) / len(normal), 4) if normal else 0.0,
+        "false_negative_rate": round(len(false_negative) / len(attacks), 4) if attacks else 0.0,
+        "avg_latency_ms": round(sum(latencies) / len(latencies), 2) if latencies else None,
+        "module_timing_available": any(r.get("module_timings_ms") for r in results),
         "categories": categories,
     }
 

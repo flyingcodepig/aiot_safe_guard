@@ -35,3 +35,13 @@
 - Added regression tests for low-risk commands, permission-blocked door unlocks, out-of-range parameters, and overall score aggregation.
 - Verified the risk audit surface with an in-process FastAPI check covering `/api/smart_command`, `/api/logs`, and `/api/logs/export`.
 - Verification: py_compile passed; `test_device_mention.py` passed; `test_risk_scoring.py` passed; expanded five-suite ablation run completed with full 166/166, no input guard 166/166, no device gate 165/166, no policy engine 135/166, no physical checker 142/166.
+
+## 2026-06-12 21:11 +08:00
+
+- Re-scoped `GOAL.md` to position the project as a trusted instruction security gateway for LLM-Agent controlled AIoT, with seven competition evidence requirements.
+- Added `docs/competition_evidence.md` covering the core problem, three named innovation points, dataset coverage, metrics, baselines, ablations, and missing evidence.
+- Extended evaluation summaries with block rate, normal pass rate, attack interception rate, false positive rate, false negative rate, average latency, and module timing availability.
+- Added named baseline profiles: `baseline_llm_direct`, `baseline_rbac_only`, `baseline_keyword_only`, and `baseline_no_physical_rules`.
+- Regenerated `evaluation/results/latest_eval.json` and `evaluation/results/latest_eval.md` for 11 suites: full, four baselines, and six ablations.
+- Added static frontend rendering support for risk summaries, per-action risk components, and audit replay modal.
+- Verification: evaluation script py_compile passed; expanded dataset summary remains 166 cases; managed evaluation completed successfully; frontend JavaScript parsed successfully with Node. Browser runtime verification was attempted but local server startup was blocked by this sandbox's process-launch restrictions.

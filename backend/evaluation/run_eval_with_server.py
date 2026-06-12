@@ -61,7 +61,19 @@ def main() -> int:
     parser.add_argument(
         "--ablation",
         nargs="*",
-        default=["full", "no_input_guard", "no_fact_checker", "no_policy_engine", "no_physical_checker"],
+        default=[
+            "full",
+            "baseline_llm_direct",
+            "baseline_rbac_only",
+            "baseline_keyword_only",
+            "baseline_no_physical_rules",
+            "no_input_guard",
+            "no_device_gate",
+            "no_fact_checker",
+            "no_policy_engine",
+            "no_physical_checker",
+            "no_selfcheck",
+        ],
     )
     args = parser.parse_args()
 

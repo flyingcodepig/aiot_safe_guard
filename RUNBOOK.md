@@ -46,6 +46,30 @@ The wrapper starts uvicorn, waits for `/health`, runs the evaluation, prints a s
 
 Use `--print-full-json` when the full response body is needed in terminal output.
 
+## Run Competition Baselines And Ablations
+
+```powershell
+cd D:\aiot_safe_guard\backend
+..\somethingelse\venv\Scripts\python.exe evaluation\run_eval_with_server.py --cases evaluation\security_cases_expanded.json --output evaluation\results\latest_eval.json --request-timeout 8
+..\somethingelse\venv\Scripts\python.exe evaluation\report_eval_results.py --input evaluation\results\latest_eval.json --output evaluation\results\latest_eval.md
+```
+
+Default suites now include:
+
+- `full`
+- `baseline_llm_direct`
+- `baseline_rbac_only`
+- `baseline_keyword_only`
+- `baseline_no_physical_rules`
+- `no_input_guard`
+- `no_device_gate`
+- `no_fact_checker`
+- `no_policy_engine`
+- `no_physical_checker`
+- `no_selfcheck`
+
+The Markdown report includes pass rate, attack interception, false positive, false negative, normal pass rate, average latency, per-category tables, failed cases, and high-risk blocked cases.
+
 ## Check Risk Score Audit Surface
 
 ```powershell
