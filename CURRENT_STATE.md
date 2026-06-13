@@ -1,11 +1,11 @@
 # Current State
 
-Updated: 2026-06-12 22:02 +08:00
+Updated: 2026-06-13 00:00 +08:00
 
 ## Branch And Checkpoint
 
 - Branch: `codex-aiot-award-automation`
-- Last stable commit: `14f55c3 feat: add formal safety dataset splits`
+- Last stable commit: `de910c2 feat: add simulated device transport layer`
 - Goal status: active, not complete
 
 ## Working Tree
@@ -15,20 +15,8 @@ Known modified files:
 - `CHANGELOG.md`
 - `CURRENT_STATE.md`
 - `NEXT_ACTIONS.md`
-- `RUNBOOK.md`
 - `SESSION_LOG.md`
-- `backend/audit.py`
-- `backend/database.py`
-- `backend/device_driver.py`
-- `backend/evaluation/evaluate_security_cases.py`
-- `backend/evaluation/report_eval_results.py`
-- `backend/evaluation/results/latest_eval.json`
-- `backend/evaluation/results/latest_eval.md`
-- `backend/main.py`
-- `backend/models.py`
-- `backend/sandbox.py`
-- `backend/test_device_driver.py`
-- `backend/test_transport_driver_api.py`
+- `backend/static/index.html`
 - `docs/competition_evidence.md`
 
 Known untracked files:
@@ -65,12 +53,14 @@ Volatile local artifacts under `backend/evaluation/results/` are ignored except 
 - Evaluation results now preserve and summarize `threat_type`; `evaluation/results/latest_eval.md` includes a Threat Type Breakdown table.
 - Added simulated MQTT/HTTP device drivers. Approved commands now return `transport_result` with protocol, endpoint, method, payload, simulated ack, and latency.
 - `transport_result` is exposed in direct command responses, smart-command action results, `/api/logs`, and JSON/CSV log export.
+- Frontend demo trace now renders the protocol handoff in smart-command action results, the audit log table, and audit replay.
+- Frontend JavaScript parse check passed with Node after adding transport rendering.
 
 ## Known Problems
 
 - Input-guard and device-gate ablations need sharper isolating cases; current expanded suite shows the clearest drops for policy and physical layers.
 - Offline evaluation disables LLM planning and LLM fact checks; a separate online/model-backed evaluation should be added later.
-- Frontend demo trace now has static rendering support for risk score, component factors, action-level risk, and audit replay; it still needs rendering for `transport_result`.
+- Frontend demo trace has static rendering support for risk score, component factors, action-level risk, simulated MQTT/HTTP transport, and audit replay; browser runtime verification is still desirable.
 - MQTT/HTTP support is currently simulated only; no real broker, webhook receiver, retry queue, or hardware adapter has been connected.
 - Frozen final-test split has been generated and format-checked, but has not yet been executed against the backend after feature freeze.
 - `docs/sandbox_report.md` is currently untracked and should be reviewed before any cleanup or commit decision.

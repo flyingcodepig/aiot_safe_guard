@@ -95,6 +95,7 @@ Implemented evidence:
 | HTTP simulation | `backend/device_driver.py` `SimulatedHttpDriver` | Models POST to a device action endpoint for alarm, door lock, and camera-like devices |
 | Sandbox integration | `backend/sandbox.py` | Approved commands update virtual state and return `transport_result` for the simulated protocol hop |
 | API/audit evidence | `/api/smart_command`, `/api/command`, `/api/logs`, `/api/logs/export` | Shows protocol, endpoint, method, payload, ack, and simulated latency in response/audit surfaces |
+| Frontend demo trace | `backend/static/index.html` | Renders the protocol handoff in action results, audit log rows, and audit replay |
 
 This is still a simulated driver layer, not real hardware connectivity. It
 closes the demo loop enough to show the trusted gateway's final handoff without

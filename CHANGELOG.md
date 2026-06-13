@@ -34,3 +34,4 @@
 - Added threat-type preservation and Threat Type Breakdown tables to evaluation JSON/Markdown reports.
 - Added simulated MQTT/HTTP device drivers for the final gateway-to-device handoff.
 - Exposed simulated protocol `transport_result` through command responses, smart-command action results, audit logs, and JSON/CSV audit export.
+- Rendered simulated protocol handoff details in the frontend command trace, audit log table, and audit replay modal.

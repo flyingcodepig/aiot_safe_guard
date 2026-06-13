@@ -72,3 +72,9 @@
 - Added `test_device_driver.py` and `test_transport_driver_api.py` covering driver selection, sandbox transport output, and API/audit/export visibility.
 - Extended evaluation results and Markdown reports with `threat_type` preservation and a Threat Type Breakdown table.
 - Verification: py_compile passed; `test_device_driver.py`, `test_device_mention.py`, `test_risk_scoring.py`, and `test_transport_driver_api.py` passed; managed 11-suite expanded evaluation completed with full 166/166.
+
+## 2026-06-13 00:00 +08:00
+
+- Added frontend rendering for `transport_result` in smart-command action results, audit log rows, and audit replay.
+- The demo trace now shows the simulated protocol handoff with protocol, endpoint, method, payload, ack, and simulated latency.
+- Verification: frontend JavaScript parsed successfully with Node; `test_transport_driver_api.py` passed; `test_device_driver.py` passed.

@@ -197,6 +197,32 @@
             </div>`;
     }
 
+    function renderTransportBadge(transport) {
+        if (!transport || !transport.protocol) return '<span class="badge bg-secondary">no transport</span>';
+        const cls = transport.protocol === 'mqtt' ? 'primary' : transport.protocol === 'http' ? 'info' : 'secondary';
+        return `<span class="badge bg-${cls}">${escapeHtml(String(transport.protocol).toUpperCase())} ${escapeHtml(transport.status || '-')}</span>`;
+    }
+
+    function renderTransportResult(transport) {
+        if (!transport || !transport.protocol) return '';
+        const payload = transport.payload || {};
+        const ack = transport.ack || {};
+        return `
+            <div class="trace-step pass mt-2">
+                <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                    <div>
+                        <div class="fw-semibold">Protocol Handoff ${renderTransportBadge(transport)}</div>
+                        <div class="small text-muted">${escapeHtml(transport.method || '-')} ${escapeHtml(transport.endpoint || '-')}</div>
+                    </div>
+                    <div class="small text-muted">${Number(transport.latency_ms ?? 0).toFixed(3)} ms simulated=${escapeHtml(transport.simulated ?? true)}</div>
+                </div>
+                <div class="row g-2 mt-1">
+                    <div class="col-md-8"><pre class="small bg-light p-2 mb-0">${escapeHtml(JSON.stringify(payload, null, 2))}</pre></div>
+                    <div class="col-md-4"><pre class="small bg-light p-2 mb-0">${escapeHtml(JSON.stringify(ack, null, 2))}</pre></div>
+                </div>
+            </div>`;
+    }
+
     function renderPlanTrace(resp) {
         const raw = resp.llm_actions || [];
         const parsed = resp.parsed_actions || [];
@@ -273,6 +299,7 @@
                     <div class="col-md-4"><small>物理规则: ${r.physical_check === null ? '未执行' : r.physical_check ? '通过' : '阻断'}</small></div>
                 </div>
                 <small>${escapeHtml(r.message)}</small>
+                ${renderTransportResult(r.transport_result)}
                 ${r.device_state_after ? `<pre class="small bg-light p-2 mt-2 mb-0">${escapeHtml(JSON.stringify(r.device_state_after, null, 2))}</pre>` : ''}
                 ${renderActionRisk(r)}
             </li>`).join('');
@@ -300,6 +327,7 @@
         const policy = parseMaybeJson(log.policy_result, {});
         const physical = parseMaybeJson(log.physical_result, {});
         const risk = parseMaybeJson(log.risk_result, {});
+        const transport = parseMaybeJson(log.transport_result, {});
         const blockReasons = parseMaybeJson(log.block_reasons, log.block_reasons || []);
         return `
             <div class="modal fade" id="auditReplayModal" tabindex="-1">
@@ -333,6 +361,7 @@
                                 <div class="col-md-6"><div class="trace-step ${policy.decision === 'block' ? 'block' : 'pass'}"><div class="fw-semibold">权限策略</div><pre class="small bg-light p-2 mb-0">${escapeHtml(JSON.stringify(policy, null, 2))}</pre></div></div>
                                 <div class="col-md-6"><div class="trace-step ${physical.decision === 'fail' ? 'block' : 'pass'}"><div class="fw-semibold">物理状态</div><pre class="small bg-light p-2 mb-0">${escapeHtml(JSON.stringify(physical, null, 2))}</pre></div></div>
                             </div>
+                            ${renderTransportResult(transport)}
                             <div class="alert alert-${log.final_decision === 'allow' ? 'success' : log.final_decision === 'require_confirm' ? 'warning' : 'danger'} mt-3 mb-0">
                                 final_decision=${escapeHtml(log.final_decision)} reasons=${escapeHtml(JSON.stringify(blockReasons))}
                             </div>
@@ -555,9 +584,10 @@
             const filtered = await apiGet('/api/logs?' + qs.toString());
             const html = `
                 <table class="table table-striped table-sm">
-                    <thead><tr><th>时间</th><th>请求ID</th><th>用户</th><th>设备</th><th>动作</th><th>决策</th><th>风险</th><th>原因</th><th></th></tr></thead>
+                    <thead><tr><th>时间</th><th>请求ID</th><th>用户</th><th>设备</th><th>动作</th><th>决策</th><th>风险</th><th>Transport</th><th>原因</th><th></th></tr></thead>
                     <tbody>${filtered.map(log => {
                         const risk = parseMaybeJson(log.risk_result, {});
+                        const transport = parseMaybeJson(log.transport_result, {});
                         const encoded = encodeURIComponent(JSON.stringify(log));
                         return `
                         <tr>
@@ -568,6 +598,7 @@
                             <td>${escapeHtml(log.target_action || '-')}</td>
                             <td><span class="badge ${log.final_decision==='allow'?'bg-success':log.final_decision==='require_confirm'?'bg-warning':'bg-danger'}">${escapeHtml(log.final_decision)}</span></td>
                             <td>${renderRiskBadge(risk)}</td>
+                            <td>${renderTransportBadge(transport)}</td>
                             <td><small>${escapeHtml(log.block_reasons || '-')}</small></td>
                             <td><button class="btn btn-sm btn-outline-primary" onclick="showAuditReplay('${encoded}')"><i class="bi bi-play-circle"></i> 回放</button></td>
                         </tr>
