@@ -66,6 +66,7 @@ Volatile local artifacts under `backend/evaluation/results/` are ignored except 
 - Frontend JavaScript parse check passed with Node after adding transport rendering.
 - Formal all dataset summary now reports 3674 cases: 541 normal/allow cases and 3133 block cases.
 - Current verification passed: py_compile for backend/evaluation files; `test_device_mention.py`; `test_risk_scoring.py`; `test_device_driver.py`; `test_transport_driver_api.py`; `git diff --check`.
+- Added `docs/problem_log.md` as the durable issue/resolution index for recurring failures and workarounds.
 
 ## Known Problems
 
@@ -76,6 +77,7 @@ Volatile local artifacts under `backend/evaluation/results/` are ignored except 
 - Frozen final-test split has been regenerated and format-checked, but has not yet been executed against the backend after feature freeze.
 - `docs/sandbox_report.md` is currently untracked and should be reviewed before any cleanup or commit decision.
 - `backend/evaluation/results/input_guard_check.json` is an untracked targeted run; current recommendation is to keep the full `latest_eval.json` instead of committing this scratch artifact.
+- Future debugging should search `docs/problem_log.md` before repeating an investigation.
 
 ## Process Rule
 

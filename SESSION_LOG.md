@@ -88,3 +88,9 @@
 - Regenerated the 11-suite managed evaluation snapshot and Markdown report. Full system passed 174/174; `no_input_guard` passed 166/174, with the 8-case drop concentrated in `prompt_injection`.
 - Treated `backend/evaluation/results/input_guard_check.json` as a temporary targeted run and left it untracked; did not touch `docs/sandbox_report.md`.
 - Verification: py_compile passed; `test_device_mention.py`, `test_risk_scoring.py`, `test_device_driver.py`, and `test_transport_driver_api.py` passed; `git diff --check` passed with only line-ending warnings.
+
+## 2026-06-13 12:55 +08:00
+
+- Added `docs/problem_log.md` as a searchable issue/resolution record covering evaluation timeouts, SQLite instability, fallback/action parsing pitfalls, dataset reporting risk, transport evidence, InputGuard ablation, open SelfCheck evidence, frontend runtime verification, and benign local shell/git warnings.
+- Updated `RUNBOOK.md` to require checking the problem log before debugging recurring failures.
+- Updated `CURRENT_STATE.md` to point future sessions at the problem log.

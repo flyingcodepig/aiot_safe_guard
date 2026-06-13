@@ -38,3 +38,4 @@
 - Added 8 prompt-injection cases that wrap otherwise allowed AIoT actions, strengthening InputGuard ablation evidence.
 - Regenerated the expanded safety corpus to 174 cases and the formal split corpus to 3674 cases.
 - Regenerated the 11-suite evaluation snapshot and Markdown report: full system 174/174; `no_input_guard` 166/174 with failures isolated to prompt injection.
+- Added `docs/problem_log.md`, a durable issue/resolution index for recurring debugging and verification problems.

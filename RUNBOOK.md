@@ -1,6 +1,6 @@
 # Runbook
 
-This file is the restart guide for a new session. Read it together with `GOAL.md`, `NEXT_ACTIONS.md`, `CURRENT_STATE.md`, and `CHANGELOG.md`.
+This file is the restart guide for a new session. Read it together with `GOAL.md`, `NEXT_ACTIONS.md`, `CURRENT_STATE.md`, `CHANGELOG.md`, and `docs/problem_log.md`.
 
 ## Inspect State
 
@@ -10,6 +10,12 @@ git status --short
 git branch --show-current
 git log -1 --oneline
 ```
+
+## Problem Lookup
+
+Before debugging a recurring failure, search `docs/problem_log.md` by symptom,
+module, command, or keyword. Add a new entry after solving a new issue so later
+sessions do not repeat the same investigation.
 
 ## Backend Smoke Checks
 
