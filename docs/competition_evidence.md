@@ -23,19 +23,19 @@ Core regression corpus: `backend/evaluation/security_cases_expanded.json`
 
 Formal split corpus: `backend/evaluation/datasets/`
 
-Current formal size: 3666 cases.
+Current formal size: 3674 cases.
 
 | Split | File | Count | Intended Use |
 | --- | --- | ---: | --- |
-| Core regression | `security_cases_core_regression.json` | 166 | Hand-audited regression and fix verification |
+| Core regression | `security_cases_core_regression.json` | 174 | Hand-audited regression and fix verification |
 | Development | `security_cases_dev.json` | 1000 | Development and debugging |
 | Validation | `security_cases_validation.json` | 500 | Periodic system selection and sanity checks |
 | Final test | `security_cases_final_test.json` | 2000 | Frozen final evaluation; no tuning on official failures |
-| Formal all | `security_cases_formal_all.json` | 3666 | Coverage statistics |
+| Formal all | `security_cases_formal_all.json` | 3674 | Coverage statistics |
 
 `security_cases_formal_manifest.json` records seed `20260612`, SHA-256 hashes,
 split counts, category counts, threat taxonomy counts, and the freeze policy.
-The 166-case suite should be reported as the core regression set, not as the
+The 174-case suite should be reported as the core regression set, not as the
 only final test evidence.
 
 Required coverage mapping:
@@ -56,15 +56,15 @@ Threat-type distribution in the formal corpus:
 
 | Threat Type | Count |
 | --- | ---: |
-| `normal_control` | 457 |
-| `normal_read` | 84 |
-| `prompt_injection` | 176 |
-| `role_spoofing` | 249 |
-| `audit_evasion` | 98 |
+| `normal_control` | 447 |
+| `normal_read` | 94 |
+| `prompt_injection` | 201 |
+| `role_spoofing` | 253 |
+| `audit_evasion` | 77 |
 | `unauthorized_control` | 530 |
-| `hallucinated_device` | 259 |
-| `wrong_action` | 154 |
-| `non_device_intent` | 112 |
+| `hallucinated_device` | 244 |
+| `wrong_action` | 171 |
+| `non_device_intent` | 110 |
 | `parameter_out_of_bounds` | 524 |
 | `interlock_conflict` | 513 |
 | `rate_abuse` | 510 |
@@ -134,25 +134,37 @@ Latest headline results:
 
 | Suite | Pass Rate | Attack Interception | False Positive | False Negative | Avg Latency(ms) |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| full | 100.0% | 100.0% | 0.0% | 0.0% | 24.26 |
-| baseline_llm_direct | 38.0% | 18.2% | 0.0% | 81.8% | 19.95 |
-| baseline_rbac_only | 69.9% | 60.3% | 0.0% | 39.7% | 18.39 |
-| baseline_keyword_only | 38.6% | 19.1% | 0.0% | 81.0% | 20.51 |
-| baseline_no_physical_rules | 85.5% | 81.0% | 0.0% | 19.1% | 16.58 |
+| full | 100.0% | 100.0% | 0.0% | 0.0% | 24.73 |
+| baseline_llm_direct | 36.2% | 17.2% | 0.0% | 82.8% | 44.53 |
+| baseline_rbac_only | 66.7% | 56.7% | 0.0% | 43.3% | 15.12 |
+| baseline_keyword_only | 36.8% | 17.9% | 0.0% | 82.1% | 15.89 |
+| baseline_no_physical_rules | 86.2% | 82.1% | 0.0% | 17.9% | 13.67 |
+| no_input_guard | 95.4% | 94.0% | 0.0% | 6.0% | 17.97 |
+| no_device_gate | 99.4% | 99.2% | 0.0% | 0.8% | 15.91 |
+| no_fact_checker | 90.2% | 87.3% | 0.0% | 12.7% | 18.16 |
+| no_policy_engine | 82.2% | 76.9% | 0.0% | 23.1% | 42.35 |
+| no_physical_checker | 86.2% | 82.1% | 0.0% | 17.9% | 33.51 |
+| no_selfcheck | 100.0% | 100.0% | 0.0% | 0.0% | 42.33 |
+
+InputGuard-specific evidence: the expanded suite includes 8
+`INJECTION_ALLOWED_ACTION` cases where an otherwise allowed light/fan command is
+wrapped in prompt-injection language such as rule bypass or maintenance mode.
+The full system blocks all 32 prompt-injection cases; `no_input_guard` passes
+only 24/32 prompt-injection cases, producing the 8-case ablation drop.
 
 Latest full-system module timing highlights:
 
 | Module | Avg ms |
 | --- | ---: |
-| user_role_lookup | 4.36 |
-| input_guard | 0.33 |
+| user_role_lookup | 4.51 |
+| input_guard | 0.24 |
 | fact_checker | 0.02 |
-| policy_engine | 3.10 |
-| physical_checker | 8.73 |
-| sandbox_execution | 11.08 |
-| risk_scoring | 0.06 |
-| audit_logging | 7.31 |
-| total | 21.72 |
+| policy_engine | 3.03 |
+| physical_checker | 9.20 |
+| sandbox_execution | 8.47 |
+| risk_scoring | 0.07 |
+| audit_logging | 7.49 |
+| total | 21.15 |
 
 Next experiment gap: execute the frozen final-test split after feature freeze and
 report it separately from development/regression results.

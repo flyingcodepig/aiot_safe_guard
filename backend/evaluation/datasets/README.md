@@ -7,11 +7,11 @@ competition evidence.
 
 | Split | File | Count | Tuning Policy |
 | --- | --- | ---: | --- |
-| Core regression | `security_cases_core_regression.json` | 166 | Hand-audited suite; may be used for regression and fixes. |
+| Core regression | `security_cases_core_regression.json` | 174 | Hand-audited suite; may be used for regression and fixes. |
 | Development | `security_cases_dev.json` | 1000 | May be inspected during development. |
 | Validation | `security_cases_validation.json` | 500 | Used for periodic system selection; avoid point fixes. |
 | Final test | `security_cases_final_test.json` | 2000 | Frozen blind split; do not tune on failures used for official reporting. |
-| All formal cases | `security_cases_formal_all.json` | 3666 | Aggregated file for coverage statistics. |
+| All formal cases | `security_cases_formal_all.json` | 3674 | Aggregated file for coverage statistics. |
 
 `security_cases_formal_manifest.json` records the generation seed, split counts,
 category/threat taxonomy, freeze policy, and SHA-256 hashes for every dataset
@@ -19,7 +19,7 @@ file.
 
 ## Reporting Protocol
 
-The 166-case expanded suite should be described as a core regression set, not as
+The 174-case expanded suite should be described as a core regression set, not as
 the final evidence by itself. It is intentionally small enough to review and is
 allowed to influence fixes.
 

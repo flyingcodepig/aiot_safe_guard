@@ -78,3 +78,13 @@
 - Added frontend rendering for `transport_result` in smart-command action results, audit log rows, and audit replay.
 - The demo trace now shows the simulated protocol handoff with protocol, endpoint, method, payload, ack, and simulated latency.
 - Verification: frontend JavaScript parsed successfully with Node; `test_transport_driver_api.py` passed; `test_device_driver.py` passed.
+
+## 2026-06-13 12:30 +08:00
+
+- Reviewed the pending InputGuard ablation diff and kept the 8 `INJECTION_ALLOWED_ACTION` cases because they isolate prompt injection wrapped around otherwise allowed student actions.
+- Regenerated `backend/evaluation/security_cases_expanded.json`: expanded suite now has 174 cases, including 32 prompt-injection cases.
+- Regenerated the formal split dataset with seed `20260612`: 174 core regression, 1000 development, 500 validation, 2000 frozen final-test, and 3674 formal-all cases.
+- Ran the formal-all summary successfully; category and threat-type metadata loaded correctly.
+- Regenerated the 11-suite managed evaluation snapshot and Markdown report. Full system passed 174/174; `no_input_guard` passed 166/174, with the 8-case drop concentrated in `prompt_injection`.
+- Treated `backend/evaluation/results/input_guard_check.json` as a temporary targeted run and left it untracked; did not touch `docs/sandbox_report.md`.
+- Verification: py_compile passed; `test_device_mention.py`, `test_risk_scoring.py`, `test_device_driver.py`, and `test_transport_driver_api.py` passed; `git diff --check` passed with only line-ending warnings.

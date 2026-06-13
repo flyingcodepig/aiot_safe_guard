@@ -35,3 +35,6 @@
 - Added simulated MQTT/HTTP device drivers for the final gateway-to-device handoff.
 - Exposed simulated protocol `transport_result` through command responses, smart-command action results, audit logs, and JSON/CSV audit export.
 - Rendered simulated protocol handoff details in the frontend command trace, audit log table, and audit replay modal.
+- Added 8 prompt-injection cases that wrap otherwise allowed AIoT actions, strengthening InputGuard ablation evidence.
+- Regenerated the expanded safety corpus to 174 cases and the formal split corpus to 3674 cases.
+- Regenerated the 11-suite evaluation snapshot and Markdown report: full system 174/174; `no_input_guard` 166/174 with failures isolated to prompt injection.

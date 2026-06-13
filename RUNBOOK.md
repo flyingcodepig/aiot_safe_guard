@@ -42,7 +42,7 @@ cd D:\aiot_safe_guard\backend
 ```powershell
 cd D:\aiot_safe_guard\backend
 ..\somethingelse\venv\Scripts\python.exe evaluation\build_formal_dataset.py --output-dir evaluation\datasets --seed 20260612 --dev-count 1000 --validation-count 500 --final-count 2000
-..\somethingelse\venv\Scripts\python.exe evaluation\evaluate_security_cases.py --cases evaluation\datasets\security_cases_final_test.json
+..\somethingelse\venv\Scripts\python.exe evaluation\evaluate_security_cases.py --cases evaluation\datasets\security_cases_formal_all.json
 ```
 
 Use `core_regression` and `dev` for fixes, `validation` for limited system
@@ -90,6 +90,9 @@ For post-freeze reporting on the formal final split, replace `--cases
 evaluation\security_cases_expanded.json` with `--cases
 evaluation\datasets\security_cases_final_test.json`. Expect a longer run because
 the final split contains 2000 cases, including repeated rate-limit cases.
+
+Current expected generated counts with seed `20260612`: 174 core regression,
+1000 development, 500 validation, 2000 final-test, and 3674 formal-all cases.
 
 ## Check Risk Score Audit Surface
 

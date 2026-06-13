@@ -1,10 +1,52 @@
 # Next Actions
 
-Updated: 2026-06-13 00:00 +08:00
+Updated: 2026-06-13 12:30 +08:00
 
 ## Active Focus
 
-Move from engineering features into competition evidence: frozen final-test evaluation, sharper ablations, protocol-aware demo trace, and report-ready tables.
+Move from engineering features into competition evidence: frozen final-test evaluation, SelfCheck/frontend evidence, protocol-aware demo trace, and report-ready tables.
+
+## Master Workstreams
+
+1. Work definition and competition narrative.
+   - Position the project as a trusted instruction safety gateway for LLM-Agent controlled AIoT, not a generic IoT console.
+   - Keep the core problem, threat model, and three named innovation points aligned across docs, demo, report, and PPT.
+
+2. Core safety gateway capability.
+   - Maintain InputGuard, device/intent gate, FactChecker, PolicyEngine, PhysicalChecker, SelfCheck/manual confirmation, risk scoring, and audit export as one coherent control chain.
+   - Keep `risk_result`, `timings_ms`, action-level decisions, and audit evidence visible in API responses and logs.
+
+3. Simulated device and protocol loop.
+   - Keep the virtual device state, simulated MQTT/HTTP handoff, `transport_result`, and device-state update path demonstrable end to end.
+   - Optional later extension: fake MQTT broker/webhook receiver, retry/failure simulation, and driver-failure safety tests.
+
+4. Formal evaluation dataset.
+   - Maintain the 174-case core regression suite and the 3674-case formal split corpus.
+   - Preserve dev/validation/final-test separation and the no-tuning final-test protocol.
+   - Preserve the sharpened InputGuard cases and add sharper SelfCheck cases if ablation evidence remains weak.
+
+5. Metrics and experiment system.
+   - Keep pass rate, block rate, attack interception, false positive, false negative, normal pass rate, per-category rate, per-threat-type rate, latency, and module timing in generated outputs.
+   - Ensure high-risk blocked cases and representative failure cases are reportable.
+
+6. Baselines and ablations.
+   - Maintain LLM direct, RBAC-only, keyword/device-gate-only, no-physical-rules, and full-system baselines.
+   - Maintain layer ablations for InputGuard, device gate, FactChecker, PolicyEngine, PhysicalChecker, and SelfCheck.
+   - Run the final baseline/ablation tables on the frozen final-test split after feature freeze.
+
+7. Advanced presentation UI.
+   - Upgrade the frontend from a basic Bootstrap admin page into a polished security-operation style demo console.
+   - Show the complete chain: natural-language command, LLM plan, parsed action, layer decisions, risk factors, simulated MQTT/HTTP handoff, device state, audit replay, and evaluation/ablation evidence.
+   - Add a guided demo mode or curated scenario entry points for judges.
+
+8. Engineering reproducibility and delivery.
+   - Keep one-command or clearly documented startup, smoke test, evaluation, report generation, and dataset regeneration paths.
+   - Keep RUNBOOK, environment variables, dataset manifest, and result locations current.
+   - Avoid hidden dependencies on chat history or local-only state.
+
+9. Report, PPT, and defense materials.
+   - Produce final report sections for work definition, threat model, architecture, innovations, dataset, metrics, baselines, ablations, latency, high-risk cases, audit chain, and limitations.
+   - Produce PPT outline/slides, architecture diagrams, experiment tables, screenshots, demo script, and likely Q&A.
 
 ## Immediate Tasks
 
@@ -12,9 +54,9 @@ Move from engineering features into competition evidence: frozen final-test eval
    - Target: execute `evaluation/datasets/security_cases_final_test.json` for the full system and selected baselines/ablations.
    - Important: do not tune on final-test failures used for official reporting; if inspected for fixes, regenerate/report a new frozen split with a new seed.
 
-2. Strengthen ablation coverage.
+2. Strengthen remaining ablation coverage.
    - Current expanded snapshot includes full, four named baselines, and six layer ablations.
-   - Add sharper cases that isolate InputGuard and SelfCheck in offline and online/model-backed settings.
+   - InputGuard now has isolating prompt-injection cases; add sharper SelfCheck cases in offline and online/model-backed settings.
 
 3. Runtime-check the demo trace.
    - Target: open the frontend against a running backend and visually verify natural-language input, LLM plan, layer decisions, risk score components/top factors, simulated MQTT/HTTP transport, execution result, device state, and audit replay.
@@ -22,14 +64,21 @@ Move from engineering features into competition evidence: frozen final-test eval
 4. Review `docs/sandbox_report.md`.
    - Target: decide whether it is a source document to keep tracked or a generated/local artifact.
 
+5. Decide whether to keep `backend/evaluation/results/input_guard_check.json`.
+   - Current recommendation: treat it as a temporary targeted run because `latest_eval.json` now contains the full 11-suite evidence.
+
 ## Completed This Session
 
 - Added reproducible formal dataset generator with split metadata and `threat_type` taxonomy.
-- Generated 3666 formal cases: 166 core regression, 1000 development, 500 validation, and 2000 frozen final-test.
+- Generated 3674 formal cases: 174 core regression, 1000 development, 500 validation, and 2000 frozen final-test.
 - Added manifest hashes and dataset README with the no-tuning final-test protocol.
 - Added evaluation/report support for `threat_type` breakdown tables.
 - Added simulated MQTT/HTTP device drivers and exposed `transport_result` through command responses and audit export.
 - Added frontend rendering for the simulated transport hop in action results, audit log rows, and audit replay.
+- Added 8 `INJECTION_ALLOWED_ACTION` cases that wrap otherwise allowed student actions in prompt-injection language.
+- Regenerated the expanded suite to 174 cases and the formal split corpus to 3674 cases.
+- Regenerated `latest_eval.json`/`.md`: full system 174/174; `no_input_guard` 166/174 with all 8 regressions in `prompt_injection`.
+- Re-ran py_compile, device mention, risk scoring, device driver, transport driver API, and `git diff --check`.
 
 ## Remaining Driver Work
 
