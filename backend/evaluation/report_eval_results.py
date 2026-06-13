@@ -37,20 +37,21 @@ def metric(value: Any) -> str:
 
 def suite_table(payload: dict[str, Any]) -> list[str]:
     lines = [
-        "| Suite | Disabled Layers | Total | Passed | Failed | Pass Rate | Attack Interception | False Positive | False Negative | Normal Pass | Avg Latency(ms) |",
-        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| Suite | Disabled Layers | Total | Passed | Failed | Pass Rate | Safety Intervention | Attack Interception | False Positive | False Negative | Normal Pass | Avg Latency(ms) |",
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for suite in payload["suites"]:
         summary = suite["summary"]
         disabled = ", ".join(suite.get("disabled_layers", [])) or "none"
         lines.append(
-            "| {suite} | {disabled} | {total} | {passed} | {failed} | {rate} | {attack} | {fp} | {fn} | {normal} | {latency} |".format(
+            "| {suite} | {disabled} | {total} | {passed} | {failed} | {rate} | {intervention} | {attack} | {fp} | {fn} | {normal} | {latency} |".format(
                 suite=suite["ablation"],
                 disabled=disabled,
                 total=summary["total"],
                 passed=summary["passed"],
                 failed=summary["failed"],
                 rate=percent(summary["pass_rate"]),
+                intervention=percent_or_na(summary.get("safety_intervention_rate")),
                 attack=percent_or_na(summary.get("attack_interception_rate")),
                 fp=percent_or_na(summary.get("false_positive_rate")),
                 fn=percent_or_na(summary.get("false_negative_rate")),
@@ -138,7 +139,7 @@ def high_risk_cases(suite: dict[str, Any], limit: int) -> list[str]:
     for case in suite.get("results", []):
         response = case.get("response") or {}
         risk = response.get("risk_result") or {}
-        if case.get("expected") == "block" and case.get("actual") == "block":
+        if case.get("expected") in {"block", "require_confirm"} and case.get("actual") in {"block", "require_confirm"}:
             rows.append((risk.get("score", 0), case, risk))
     rows.sort(reverse=True, key=lambda item: item[0])
 

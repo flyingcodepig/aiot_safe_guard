@@ -22,6 +22,7 @@ sessions do not repeat the same investigation.
 ```powershell
 cd D:\aiot_safe_guard\backend
 ..\somethingelse\venv\Scripts\python.exe -m py_compile audit.py database.py main.py models.py risk_scoring.py test_risk_scoring.py
+..\somethingelse\venv\Scripts\python.exe test_selfcheck_confirmation.py
 ..\somethingelse\venv\Scripts\python.exe test_device_mention.py
 ..\somethingelse\venv\Scripts\python.exe test_risk_scoring.py
 ..\somethingelse\venv\Scripts\python.exe test_device_driver.py
@@ -89,7 +90,7 @@ Default suites now include:
 - `no_physical_checker`
 - `no_selfcheck`
 
-The Markdown report includes pass rate, attack interception, false positive, false negative, normal pass rate, average latency, per-category tables, failed cases, and high-risk blocked cases.
+The Markdown report includes pass rate, safety intervention rate, attack interception, false positive, false negative, normal pass rate, average latency, per-category tables, failed cases, and high-risk blocked/confirmation cases.
 It also includes a Threat Type Breakdown table when cases/results include `threat_type`, plus a Module Timing table derived from smart-command `timings_ms` and suite-level `avg_module_timings_ms`.
 
 For post-freeze reporting on the formal final split, replace `--cases
@@ -97,8 +98,8 @@ evaluation\security_cases_expanded.json` with `--cases
 evaluation\datasets\security_cases_final_test.json`. Expect a longer run because
 the final split contains 2000 cases, including repeated rate-limit cases.
 
-Current expected generated counts with seed `20260612`: 174 core regression,
-1000 development, 500 validation, 2000 final-test, and 3674 formal-all cases.
+Current expected generated counts with seed `20260612`: 182 core regression,
+1000 development, 500 validation, 2000 final-test, and 3682 formal-all cases.
 
 ## Check Risk Score Audit Surface
 

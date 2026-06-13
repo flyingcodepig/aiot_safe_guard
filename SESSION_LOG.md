@@ -94,3 +94,16 @@
 - Added `docs/problem_log.md` as a searchable issue/resolution record covering evaluation timeouts, SQLite instability, fallback/action parsing pitfalls, dataset reporting risk, transport evidence, InputGuard ablation, open SelfCheck evidence, frontend runtime verification, and benign local shell/git warnings.
 - Updated `RUNBOOK.md` to require checking the problem log before debugging recurring failures.
 - Updated `CURRENT_STATE.md` to point future sessions at the problem log.
+
+## 2026-06-13 13:35 +08:00
+
+- Addressed the weak offline SelfCheck ablation by adding a system-controlled manual-confirmation gate under the `selfcheck` layer.
+- The gate triggers when user text claims prior manual confirmation/secondary approval for high-risk but otherwise authorized actions, returning `require_confirm` with a system `confirmation_token` instead of trusting the text claim.
+- Confirmation approval now re-enters the smart-command pipeline with confirmation gates skipped, while policy, physical checks, execution, and audit still run.
+- Updated evaluation metrics so `require_confirm` counts as a safety intervention while remaining distinct from direct `block`.
+- Added 8 `SELFCHECK_CONFIRM` cases and regenerated `security_cases_expanded.json`: expanded suite now has 182 cases across eight categories.
+- Regenerated the formal split dataset with seed `20260612`: 182 core regression, 1000 development, 500 validation, 2000 frozen final-test, and 3682 formal-all cases.
+- Regenerated the 11-suite managed evaluation snapshot and Markdown report. Full system passed 182/182; `no_selfcheck` passed 174/182, with the 8-case drop concentrated in `selfcheck`.
+- Added `test_selfcheck_confirmation.py` covering default `require_confirm` behavior and `X-Ablation-Disable: selfcheck` direct allow behavior.
+- Formalized the future-session workflow in root-level `AGENTS.md` and `BOOTSTRAP.md`, including the rule to search `docs/problem_log.md` before repeating an investigation.
+- Verification: py_compile passed; `test_selfcheck_confirmation.py`, `test_device_mention.py`, `test_risk_scoring.py`, `test_device_driver.py`, and `test_transport_driver_api.py` passed; `git diff --check` passed with only CRLF warnings.

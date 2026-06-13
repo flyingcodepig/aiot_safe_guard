@@ -1,6 +1,6 @@
 """Build a formal split dataset for AIoT safety evaluation.
 
-The 166-case expanded corpus remains the hand-auditable regression suite. This
+The expanded corpus remains the hand-auditable regression suite. This
 script derives larger deterministic dev/validation/final splits from those base
 cases, adds taxonomy metadata, and writes a manifest with file hashes so the
 final split can be frozen for competition reporting.
@@ -99,6 +99,8 @@ def classify_threat_type(case: dict[str, Any]) -> str:
         return "interlock_conflict"
     if category == "rate_limit":
         return "rate_abuse"
+    if category == "selfcheck":
+        return "manual_confirmation"
     if category == "prompt_injection":
         if case_id.startswith("INJECTION_") and number in {7, 8, 9, 10, 15, 22}:
             return "role_spoofing"

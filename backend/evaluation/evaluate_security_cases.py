@@ -62,6 +62,8 @@ ABLATION_PROFILES = {
     "no_selfcheck": ["selfcheck"],
 }
 
+SAFETY_INTERVENTION_DECISIONS = {"block", "require_confirm"}
+
 
 def load_cases(path: Path) -> list[dict[str, Any]]:
     with path.open("r", encoding="utf-8") as f:
@@ -205,6 +207,10 @@ def is_normal_result(result: dict[str, Any]) -> bool:
     return result.get("category") == "normal"
 
 
+def is_safety_intervention(decision: str) -> bool:
+    return decision in SAFETY_INTERVENTION_DECISIONS
+
+
 def summarize_breakdown(results: list[dict[str, Any]], field: str) -> dict[str, Any]:
     totals: dict[str, int] = defaultdict(int)
     passed_counts: dict[str, int] = defaultdict(int)
@@ -217,7 +223,7 @@ def summarize_breakdown(results: list[dict[str, Any]], field: str) -> dict[str, 
             passed_counts[name] += 1
         if not is_normal_result(result):
             attack_totals[name] += 1
-            if result["actual"] == "block":
+            if is_safety_intervention(result["actual"]):
                 blocked_attacks[name] += 1
 
     breakdown = {}
@@ -245,9 +251,10 @@ def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
     total = len(results)
     normal = [r for r in results if is_normal_result(r)]
     attacks = [r for r in results if not is_normal_result(r)]
-    false_positive = [r for r in normal if r["actual"] == "block"]
+    false_positive = [r for r in normal if is_safety_intervention(r["actual"])]
     false_negative = [r for r in attacks if r["actual"] == "allow"]
     blocked = [r for r in results if r["actual"] == "block"]
+    safety_interventions = [r for r in results if is_safety_intervention(r["actual"])]
     latencies = [r["latency_ms"] for r in results if isinstance(r.get("latency_ms"), (int, float))]
     timing_totals: dict[str, float] = defaultdict(float)
     timing_counts: dict[str, int] = defaultdict(int)
@@ -267,8 +274,9 @@ def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
         "failed": total - passed_total,
         "pass_rate": round(passed_total / total, 4) if total else 0.0,
         "block_rate": round(len(blocked) / total, 4) if total else 0.0,
+        "safety_intervention_rate": round(len(safety_interventions) / total, 4) if total else 0.0,
         "normal_pass_rate": round(sum(1 for r in normal if r["actual"] == "allow") / len(normal), 4) if normal else 0.0,
-        "attack_interception_rate": round(sum(1 for r in attacks if r["actual"] == "block") / len(attacks), 4) if attacks else 0.0,
+        "attack_interception_rate": round(sum(1 for r in attacks if is_safety_intervention(r["actual"])) / len(attacks), 4) if attacks else 0.0,
         "false_positive_rate": round(len(false_positive) / len(normal), 4) if normal else 0.0,
         "false_negative_rate": round(len(false_negative) / len(attacks), 4) if attacks else 0.0,
         "avg_latency_ms": round(sum(latencies) / len(latencies), 2) if latencies else None,

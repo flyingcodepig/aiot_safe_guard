@@ -205,6 +205,108 @@ def no_action_risk(
     return score_overall([], action_score)
 
 
+MANUAL_CONFIRMATION_MARKERS = (
+    "人工确认",
+    "人工审批",
+    "二次确认",
+    "二次审批",
+    "人工复核",
+    "复核后",
+    "审批后",
+    "确认后",
+)
+
+MANUAL_CONFIRMATION_DEVICE_TYPES = {"door_lock", "camera", "alarm", "instrument"}
+MANUAL_CONFIRMATION_ACTIONS = {
+    "unlock",
+    "lock",
+    "turn_on",
+    "turn_off",
+    "start_recording",
+    "stop_recording",
+    "silence",
+    "set_temp",
+}
+
+
+def manual_confirmation_reason(user_input: str, parsed_actions: List[Dict[str, Any]]) -> Optional[str]:
+    if not parsed_actions or not any(marker in user_input for marker in MANUAL_CONFIRMATION_MARKERS):
+        return None
+    for action in parsed_actions:
+        if (
+            action.get("device_type") in MANUAL_CONFIRMATION_DEVICE_TYPES
+            and action.get("action") in MANUAL_CONFIRMATION_ACTIONS
+        ):
+            return "manual confirmation claimed in user input; system confirmation required"
+    return None
+
+
+def create_confirmation_response(
+    *,
+    request_id: str,
+    user_id: str,
+    user_role: str,
+    user_input: str,
+    raw_actions: List[Dict[str, Any]],
+    parsed_actions: List[Dict[str, Any]],
+    input_guard_result: Dict[str, Any],
+    reason: str,
+    timings: Dict[str, float],
+    request_start: float,
+) -> SmartCommandResponse:
+    stage_start = time.perf_counter()
+    risk_result = no_action_risk(
+        user_role,
+        input_guard_result,
+        reason,
+        policy_decision="allow",
+    )
+    add_timing(timings, "risk_scoring", stage_start)
+
+    token = uuid.uuid4().hex
+    stage_start = time.perf_counter()
+    conn = get_connection()
+    conn.execute(
+        "INSERT INTO pending_confirmations (token, user_id, user_input, user_role, input_guard_result) VALUES (?,?,?,?,?)",
+        (token, user_id, user_input, user_role, json_module.dumps(input_guard_result)),
+    )
+    conn.commit()
+    conn.close()
+    add_timing(timings, "confirmation_store", stage_start)
+
+    stage_start = time.perf_counter()
+    audit_logger.log(
+        request_id,
+        user_input,
+        user_role,
+        "",
+        "",
+        input_guard_result,
+        {"is_valid": False, "reasons": [reason]},
+        {"decision": "allow", "reason": "requires confirmation"},
+        {},
+        "require_confirm",
+        [reason],
+        risk_result,
+    )
+    add_timing(timings, "audit_logging", stage_start)
+    return SmartCommandResponse(
+        request_id=request_id,
+        user_id=user_id,
+        user_role=user_role,
+        user_input=user_input,
+        llm_actions=raw_actions,
+        parsed_actions=parsed_actions,
+        action_results=[],
+        overall_decision="require_confirm",
+        input_guard_result=input_guard_result,
+        risk_result=risk_result,
+        timings_ms=finalize_timings(timings, request_start),
+        require_confirmation=True,
+        confirmation_token=token,
+    )
+
+
 def direct_command_risk(
     user_role: str,
     input_guard_result: Dict[str, Any],
@@ -583,7 +685,8 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
                                   input_guard_result: dict,
                                   safety_layers: Optional[Dict[str, bool]] = None,
                                   timings: Optional[Dict[str, float]] = None,
-                                  request_start: Optional[float] = None) -> SmartCommandResponse:
+                                  request_start: Optional[float] = None,
+                                  confirmed: bool = False) -> SmartCommandResponse:
     timings = timings or {}
     request_start = request_start or time.perf_counter()
     safety_layers = safety_layers or get_safety_layers()
@@ -623,7 +726,7 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
 
     # SelfCheckGPT 多采样一致性：仅在意图门禁通过后触发，不一致时标记需确认
     stage_start = time.perf_counter()
-    if safety_layers["selfcheck"] and selfcheck_wrapper and raw_actions and parsed_actions:
+    if safety_layers["selfcheck"] and not confirmed and selfcheck_wrapper and raw_actions and parsed_actions:
         sc_result = selfcheck_wrapper.check(
             user_input, raw_actions, llm_planner.plan, num_samples=app_config.SELFCHECK_SAMPLE_COUNT,
         )
@@ -731,6 +834,23 @@ async def execute_smart_pipeline(user_id: str, user_input: str,
                     risk_result=risk_result,
                     timings_ms=finalize_timings(timings, request_start),
                 )
+
+    stage_start = time.perf_counter()
+    confirm_reason = manual_confirmation_reason(user_input, parsed_actions) if safety_layers["selfcheck"] and not confirmed else None
+    add_timing(timings, "selfcheck_manual_gate", stage_start)
+    if confirm_reason:
+        return create_confirmation_response(
+            request_id=request_id,
+            user_id=user_id,
+            user_role=user_role,
+            user_input=user_input,
+            raw_actions=raw_actions,
+            parsed_actions=parsed_actions,
+            input_guard_result=input_guard_result,
+            reason=confirm_reason,
+            timings=timings,
+            request_start=request_start,
+        )
 
     action_results = []
     all_passed = True
@@ -1024,7 +1144,8 @@ async def confirm_request(token: str, body: ConfirmRequest):
     ig = json_module.loads(row["input_guard_result"])
     return await execute_smart_pipeline(row["user_id"], row["user_input"],
                                          f"CONF_{uuid.uuid4().hex[:8]}",
-                                         row["user_role"], ig)
+                                         row["user_role"], ig,
+                                         confirmed=True)
 
 
 @app.get("/api/pending-confirmations")

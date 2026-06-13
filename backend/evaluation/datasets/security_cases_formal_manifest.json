@@ -1,6 +1,6 @@
 {
   "name": "AIoT Safe Guard formal safety dataset",
-  "created_at": "2026-06-13T04:15:30.497139+00:00",
+  "created_at": "2026-06-13T05:25:05.862105+00:00",
   "seed": 20260612,
   "freeze_policy": {
     "core_regression": "hand-audited suite, may be used for regression and tuning",
@@ -9,49 +9,52 @@
     "final_test": "frozen blind split; do not tune on failures used in official reporting"
   },
   "summary": {
-    "total": 3674,
+    "total": 3682,
     "splits": {
-      "core_regression": 174,
+      "core_regression": 182,
       "dev": 1000,
       "final_test": 2000,
       "validation": 500
     },
     "categories": {
-      "hallucination": 525,
-      "interlock": 513,
-      "normal": 541,
-      "physical_range": 524,
-      "privilege": 530,
-      "prompt_injection": 531,
-      "rate_limit": 510
+      "hallucination": 462,
+      "interlock": 450,
+      "normal": 478,
+      "physical_range": 462,
+      "privilege": 467,
+      "prompt_injection": 469,
+      "rate_limit": 449,
+      "selfcheck": 445
     },
     "threat_types": {
-      "audit_evasion": 77,
-      "hallucinated_device": 244,
-      "interlock_conflict": 513,
-      "non_device_intent": 110,
-      "normal_control": 447,
-      "normal_read": 94,
-      "parameter_out_of_bounds": 524,
-      "prompt_injection": 201,
-      "rate_abuse": 510,
-      "role_spoofing": 253,
-      "unauthorized_control": 530,
-      "wrong_action": 171
+      "audit_evasion": 53,
+      "hallucinated_device": 212,
+      "interlock_conflict": 450,
+      "manual_confirmation": 445,
+      "non_device_intent": 108,
+      "normal_control": 407,
+      "normal_read": 71,
+      "parameter_out_of_bounds": 462,
+      "prompt_injection": 191,
+      "rate_abuse": 449,
+      "role_spoofing": 225,
+      "unauthorized_control": 467,
+      "wrong_action": 142
     },
     "decisions": {
-      "allow": 541,
-      "block": 3133
+      "allow": 478,
+      "block": 2759,
+      "require_confirm": 445
     }
   },
   "files": {
     "core_regression": {
       "path": "evaluation/datasets/security_cases_core_regression.json",
-      "sha256": "59ef694315ac45f775f51be134be426d8262f7575091187c9c97f4110acc0978",
+      "sha256": "febc73fe0745949d8fc013de6e46885c7da1a30f25adaafb4757e80801275732",
       "summary": {
-        "total": 174,
+        "total": 182,
         "splits": {
-          "core_regression": 174
+          "core_regression": 182
         },
         "categories": {
           "hallucination": 24,
@@ -60,12 +63,14 @@
           "physical_range": 24,
           "privilege": 30,
           "prompt_injection": 32,
-          "rate_limit": 12
+          "rate_limit": 12,
+          "selfcheck": 8
         },
         "threat_types": {
           "audit_evasion": 2,
           "hallucinated_device": 11,
           "interlock_conflict": 12,
+          "manual_confirmation": 8,
           "non_device_intent": 5,
           "normal_control": 34,
           "normal_read": 6,
@@ -78,158 +83,171 @@
         },
         "decisions": {
           "allow": 40,
-          "block": 134
+          "block": 134,
+          "require_confirm": 8
         }
       }
     },
     "dev": {
       "path": "evaluation/datasets/security_cases_dev.json",
-      "sha256": "43a0dae9c165c2174cfc066fdd3955971a5cc4a4d6c698f58679bfdc6c8b47a0",
+      "sha256": "cd6bd65b284ced808003e783b7b371d893606de6cdbe5b76ac8800df4fd3abd1",
       "summary": {
         "total": 1000,
         "splits": {
           "dev": 1000
         },
         "categories": {
-          "hallucination": 143,
-          "interlock": 143,
-          "normal": 143,
-          "physical_range": 143,
-          "privilege": 143,
-          "prompt_injection": 143,
-          "rate_limit": 142
+          "hallucination": 125,
+          "interlock": 125,
+          "normal": 125,
+          "physical_range": 125,
+          "privilege": 125,
+          "prompt_injection": 125,
+          "rate_limit": 125,
+          "selfcheck": 125
         },
         "threat_types": {
-          "audit_evasion": 23,
-          "hallucinated_device": 63,
-          "interlock_conflict": 143,
-          "non_device_intent": 30,
-          "normal_control": 116,
-          "normal_read": 27,
-          "parameter_out_of_bounds": 143,
-          "prompt_injection": 53,
-          "rate_abuse": 142,
-          "role_spoofing": 67,
-          "unauthorized_control": 143,
-          "wrong_action": 50
+          "audit_evasion": 17,
+          "hallucinated_device": 54,
+          "interlock_conflict": 125,
+          "manual_confirmation": 125,
+          "non_device_intent": 28,
+          "normal_control": 110,
+          "normal_read": 15,
+          "parameter_out_of_bounds": 125,
+          "prompt_injection": 52,
+          "rate_abuse": 125,
+          "role_spoofing": 56,
+          "unauthorized_control": 125,
+          "wrong_action": 43
         },
         "decisions": {
-          "allow": 143,
-          "block": 857
+          "allow": 125,
+          "block": 750,
+          "require_confirm": 125
         }
       }
     },
     "validation": {
       "path": "evaluation/datasets/security_cases_validation.json",
-      "sha256": "57650a79ecf7db461923c52922c9e8fb508de990156c0338bc1a51daa8b56ca4",
+      "sha256": "4ac3f12eac07adee12b2ba1250be7fa43ef50a4269d4b9b8354ecfa5cde78a36",
       "summary": {
         "total": 500,
         "splits": {
           "validation": 500
         },
         "categories": {
-          "hallucination": 72,
-          "interlock": 72,
-          "normal": 72,
-          "physical_range": 71,
-          "privilege": 71,
-          "prompt_injection": 71,
-          "rate_limit": 71
+          "hallucination": 63,
+          "interlock": 63,
+          "normal": 63,
+          "physical_range": 63,
+          "privilege": 62,
+          "prompt_injection": 62,
+          "rate_limit": 62,
+          "selfcheck": 62
         },
         "threat_types": {
-          "audit_evasion": 6,
-          "hallucinated_device": 37,
-          "interlock_conflict": 72,
-          "non_device_intent": 12,
-          "normal_control": 58,
-          "normal_read": 14,
-          "parameter_out_of_bounds": 71,
-          "prompt_injection": 34,
-          "rate_abuse": 71,
-          "role_spoofing": 31,
-          "unauthorized_control": 71,
-          "wrong_action": 23
+          "audit_evasion": 7,
+          "hallucinated_device": 34,
+          "interlock_conflict": 63,
+          "manual_confirmation": 62,
+          "non_device_intent": 5,
+          "normal_control": 53,
+          "normal_read": 10,
+          "parameter_out_of_bounds": 63,
+          "prompt_injection": 20,
+          "rate_abuse": 62,
+          "role_spoofing": 35,
+          "unauthorized_control": 62,
+          "wrong_action": 24
         },
         "decisions": {
-          "allow": 72,
-          "block": 428
+          "allow": 63,
+          "block": 375,
+          "require_confirm": 62
         }
       }
     },
     "final_test": {
       "path": "evaluation/datasets/security_cases_final_test.json",
-      "sha256": "6cbaa5bcc0d0078f9fdc6a4434f2c0f033b400ea9e9760f58d98829749fd3d85",
+      "sha256": "0360b68d1d0f2c770ff9e4331a4471651383f61b14aebf0db1ad5ff2a04a2601",
       "summary": {
         "total": 2000,
         "splits": {
           "final_test": 2000
         },
         "categories": {
-          "hallucination": 286,
-          "interlock": 286,
-          "normal": 286,
-          "physical_range": 286,
-          "privilege": 286,
-          "prompt_injection": 285,
-          "rate_limit": 285
+          "hallucination": 250,
+          "interlock": 250,
+          "normal": 250,
+          "physical_range": 250,
+          "privilege": 250,
+          "prompt_injection": 250,
+          "rate_limit": 250,
+          "selfcheck": 250
         },
         "threat_types": {
-          "audit_evasion": 46,
-          "hallucinated_device": 133,
-          "interlock_conflict": 286,
-          "non_device_intent": 63,
-          "normal_control": 239,
-          "normal_read": 47,
-          "parameter_out_of_bounds": 286,
-          "prompt_injection": 92,
-          "rate_abuse": 285,
-          "role_spoofing": 147,
-          "unauthorized_control": 286,
-          "wrong_action": 90
+          "audit_evasion": 27,
+          "hallucinated_device": 113,
+          "interlock_conflict": 250,
+          "manual_confirmation": 250,
+          "non_device_intent": 70,
+          "normal_control": 210,
+          "normal_read": 40,
+          "parameter_out_of_bounds": 250,
+          "prompt_injection": 97,
+          "rate_abuse": 250,
+          "role_spoofing": 126,
+          "unauthorized_control": 250,
+          "wrong_action": 67
         },
         "decisions": {
-          "allow": 286,
-          "block": 1714
+          "allow": 250,
+          "block": 1500,
+          "require_confirm": 250
         }
       }
     },
     "formal_all": {
       "path": "evaluation/datasets/security_cases_formal_all.json",
-      "sha256": "e63b338cbe92bf43c2d61fb7714d1c39d51f481482428de874d4da437169f0f4",
+      "sha256": "2451f9866b3af47a246a5a221e75e16248358274295e9443c4ccdb308e1fa576",
       "summary": {
-        "total": 3674,
+        "total": 3682,
         "splits": {
-          "core_regression": 174,
+          "core_regression": 182,
           "dev": 1000,
           "final_test": 2000,
           "validation": 500
         },
         "categories": {
-          "hallucination": 525,
-          "interlock": 513,
-          "normal": 541,
-          "physical_range": 524,
-          "privilege": 530,
-          "prompt_injection": 531,
-          "rate_limit": 510
+          "hallucination": 462,
+          "interlock": 450,
+          "normal": 478,
+          "physical_range": 462,
+          "privilege": 467,
+          "prompt_injection": 469,
+          "rate_limit": 449,
+          "selfcheck": 445
         },
         "threat_types": {
-          "audit_evasion": 77,
-          "hallucinated_device": 244,
-          "interlock_conflict": 513,
-          "non_device_intent": 110,
-          "normal_control": 447,
-          "normal_read": 94,
-          "parameter_out_of_bounds": 524,
-          "prompt_injection": 201,
-          "rate_abuse": 510,
-          "role_spoofing": 253,
-          "unauthorized_control": 530,
-          "wrong_action": 171
+          "audit_evasion": 53,
+          "hallucinated_device": 212,
+          "interlock_conflict": 450,
+          "manual_confirmation": 445,
+          "non_device_intent": 108,
+          "normal_control": 407,
+          "normal_read": 71,
+          "parameter_out_of_bounds": 462,
+          "prompt_injection": 191,
+          "rate_abuse": 449,
+          "role_spoofing": 225,
+          "unauthorized_control": 467,
+          "wrong_action": 142
         },
         "decisions": {
-          "allow": 541,
-          "block": 3133
+          "allow": 478,
+          "block": 2759,
+          "require_confirm": 445
         }
       }
     }

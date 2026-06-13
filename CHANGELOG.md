@@ -39,3 +39,9 @@
 - Regenerated the expanded safety corpus to 174 cases and the formal split corpus to 3674 cases.
 - Regenerated the 11-suite evaluation snapshot and Markdown report: full system 174/174; `no_input_guard` 166/174 with failures isolated to prompt injection.
 - Added `docs/problem_log.md`, a durable issue/resolution index for recurring debugging and verification problems.
+- Added root-level `AGENTS.md` and `BOOTSTRAP.md` so new sessions consistently inspect handoff docs and search the problem log before debugging.
+- Added an offline-reproducible SelfCheck/manual-confirmation gate for high-risk actions where the user claims prior approval.
+- Ensured confirmed requests re-enter the smart-command pipeline without re-triggering confirmation gates while still passing through policy, physical checks, execution, and audit.
+- Added 8 `SELFCHECK_CONFIRM` cases and regenerated the expanded safety corpus to 182 cases plus the formal split corpus to 3682 cases.
+- Updated evaluation metrics/reports to count `require_confirm` as a safety intervention distinct from direct `block`.
+- Regenerated the 11-suite evaluation snapshot and Markdown report: full system 182/182; `no_selfcheck` 174/182 with failures isolated to the new SelfCheck/manual-confirmation cases.

@@ -25,12 +25,13 @@ debugging from scratch.
 | P008 | dataset | solved | Core suite overfitting/reporting risk |
 | P009 | transport/demo | solved | Missing gateway-to-device handoff evidence |
 | P010 | ablation | solved | InputGuard ablation showed no drop |
-| P011 | ablation | open | SelfCheck ablation still weak offline |
+| P011 | ablation | solved | SelfCheck ablation still weak offline |
 | P012 | frontend | open | Browser runtime verification not completed |
 | P013 | local environment | benign | PowerShell profile warning |
 | P014 | git/local files | benign | Git ignore permission warning |
 | P015 | git/local files | benign | CRLF warning during diff/check |
 | P016 | workspace hygiene | open | Untracked sandbox report decision |
+| P017 | process | solved | Agent startup and recovery workflow not centralized |
 
 ## P001 - Offline Evaluation Timeout
 
@@ -302,11 +303,11 @@ Keywords:
 
 ## P011 - SelfCheck Ablation Still Weak Offline
 
-Status: open
+Status: solved
 
 Symptoms:
-- `no_selfcheck` currently has the same headline result as full system in the
-  offline expanded evaluation.
+- `no_selfcheck` had the same headline result as full system in the offline
+  expanded evaluation.
 
 Root Cause:
 - Managed offline evaluation sets `SELFCHECK_ENABLED=false` and
@@ -314,18 +315,33 @@ Root Cause:
   contribute.
 - Existing cases do not isolate the manual-confirmation/SelfCheck layer.
 
-Current Recommendation:
-- Add reproducible cases for high-risk but otherwise authorized actions that
-  should return `require_confirm`.
-- Treat `require_confirm` as a safety intervention in metrics, distinct from
-  direct `block`.
-- Keep an online/model-backed SelfCheck run as separate evidence later.
+Resolution:
+- Added an offline-reproducible manual-confirmation gate under the `selfcheck`
+  safety layer. If the user claims "manual confirmation", "secondary approval",
+  or similar prior approval for high-risk device actions, the system now creates
+  its own `confirmation_token` and returns `require_confirm`.
+- Added 8 `SELFCHECK_CONFIRM` cases that are otherwise authorized and physically
+  safe, isolating the contribution of the SelfCheck/manual-confirmation layer.
+- Updated evaluation metrics so `require_confirm` counts as a safety
+  intervention while remaining distinct from direct `block`.
+- Added `test_selfcheck_confirmation.py`.
 
-Verification Target:
+Verification:
 ```powershell
 cd D:\aiot_safe_guard\backend
+..\somethingelse\venv\Scripts\python.exe test_selfcheck_confirmation.py
 ..\somethingelse\venv\Scripts\python.exe evaluation\run_eval_with_server.py --cases evaluation\security_cases_expanded.json --output evaluation\results\latest_eval.json --ablation full no_selfcheck --request-timeout 8
 ```
+
+Expected Evidence:
+- Full system: `182/182`.
+- `no_selfcheck`: `174/182`.
+- The 8-case drop is concentrated in `selfcheck` / `manual_confirmation`.
+
+Remaining Note:
+- A separate online/model-backed SelfCheck run is still useful later, but the
+  offline ablation table now has reproducible SelfCheck/manual-confirmation
+  evidence.
 
 Keywords:
 `SelfCheck`, `no_selfcheck`, `require_confirm`, `manual confirmation`,
@@ -427,3 +443,37 @@ Current Rule:
 Keywords:
 `sandbox_report.md`, `untracked`, `workspace hygiene`.
 
+## P017 - Agent Startup And Recovery Workflow Not Centralized
+
+Status: solved
+
+Symptoms:
+- Work habits such as reading handoff docs, checking the problem log, avoiding
+  unrelated dirty files, and updating evidence docs were described in chat but
+  not discoverable from the repository root.
+- Future sessions could repeat previous investigations because the expected
+  startup/debugging/recovery flow was not formalized in obvious files.
+
+Root Cause:
+- The project had `RUNBOOK.md`, `CURRENT_STATE.md`, `SESSION_LOG.md`, and this
+  problem log, but no root-level agent instruction file.
+
+Resolution:
+- Added root-level `AGENTS.md` as the project workflow for AI coding agents.
+- Added root-level `BOOTSTRAP.md` as the compact recovery guide for new or
+  context-compacted sessions.
+- The workflow requires startup state inspection, reading handoff files,
+  searching `docs/problem_log.md` before debugging, scoped edits, relevant
+  verification, and closeout documentation.
+
+Verification:
+```powershell
+cd D:\aiot_safe_guard
+Test-Path AGENTS.md
+Test-Path BOOTSTRAP.md
+Test-Path docs\problem_log.md
+```
+
+Keywords:
+`AGENTS.md`, `BOOTSTRAP.md`, `agent workflow`, `startup checklist`,
+`problem log`, `handoff docs`, `repeat debugging`, `context compaction`.

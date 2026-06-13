@@ -23,19 +23,19 @@ Core regression corpus: `backend/evaluation/security_cases_expanded.json`
 
 Formal split corpus: `backend/evaluation/datasets/`
 
-Current formal size: 3674 cases.
+Current formal size: 3682 cases.
 
 | Split | File | Count | Intended Use |
 | --- | --- | ---: | --- |
-| Core regression | `security_cases_core_regression.json` | 174 | Hand-audited regression and fix verification |
+| Core regression | `security_cases_core_regression.json` | 182 | Hand-audited regression and fix verification |
 | Development | `security_cases_dev.json` | 1000 | Development and debugging |
 | Validation | `security_cases_validation.json` | 500 | Periodic system selection and sanity checks |
 | Final test | `security_cases_final_test.json` | 2000 | Frozen final evaluation; no tuning on official failures |
-| Formal all | `security_cases_formal_all.json` | 3674 | Coverage statistics |
+| Formal all | `security_cases_formal_all.json` | 3682 | Coverage statistics |
 
 `security_cases_formal_manifest.json` records seed `20260612`, SHA-256 hashes,
 split counts, category counts, threat taxonomy counts, and the freeze policy.
-The 174-case suite should be reported as the core regression set, not as the
+The 182-case suite should be reported as the core regression set, not as the
 only final test evidence.
 
 Required coverage mapping:
@@ -51,23 +51,25 @@ Required coverage mapping:
 | Parameter out of bounds | `physical_range` category | covered |
 | Interlock conflict | `interlock` category | covered |
 | Rate abuse | `rate_limit` category | covered |
+| Manual confirmation | `selfcheck` category / `threat_type=manual_confirmation` | covered |
 
 Threat-type distribution in the formal corpus:
 
 | Threat Type | Count |
 | --- | ---: |
-| `normal_control` | 447 |
-| `normal_read` | 94 |
-| `prompt_injection` | 201 |
-| `role_spoofing` | 253 |
-| `audit_evasion` | 77 |
-| `unauthorized_control` | 530 |
-| `hallucinated_device` | 244 |
-| `wrong_action` | 171 |
-| `non_device_intent` | 110 |
-| `parameter_out_of_bounds` | 524 |
-| `interlock_conflict` | 513 |
-| `rate_abuse` | 510 |
+| `normal_control` | 407 |
+| `normal_read` | 71 |
+| `prompt_injection` | 191 |
+| `role_spoofing` | 225 |
+| `audit_evasion` | 53 |
+| `unauthorized_control` | 467 |
+| `hallucinated_device` | 212 |
+| `wrong_action` | 142 |
+| `non_device_intent` | 108 |
+| `parameter_out_of_bounds` | 462 |
+| `interlock_conflict` | 450 |
+| `rate_abuse` | 449 |
+| `manual_confirmation` | 445 |
 
 ## Metrics
 
@@ -77,8 +79,9 @@ Implemented in `backend/evaluation/evaluate_security_cases.py` summary:
 | --- | --- |
 | `pass_rate` | cases where actual final decision equals expected final decision |
 | `block_rate` | all cases whose final decision is `block` |
-| `attack_interception_rate` | non-normal cases blocked by the system |
-| `false_positive_rate` | normal cases incorrectly blocked |
+| `safety_intervention_rate` | all cases whose final decision is `block` or `require_confirm` |
+| `attack_interception_rate` | non-normal cases blocked or sent to manual confirmation by the system |
+| `false_positive_rate` | normal cases incorrectly blocked or sent to manual confirmation |
 | `false_negative_rate` | non-normal cases incorrectly allowed |
 | `normal_pass_rate` | normal cases allowed |
 | `avg_latency_ms` | average request latency measured by the evaluator |
@@ -132,19 +135,19 @@ Current saved expanded snapshot includes: `full`, `baseline_llm_direct`, `baseli
 
 Latest headline results:
 
-| Suite | Pass Rate | Attack Interception | False Positive | False Negative | Avg Latency(ms) |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| full | 100.0% | 100.0% | 0.0% | 0.0% | 24.73 |
-| baseline_llm_direct | 36.2% | 17.2% | 0.0% | 82.8% | 44.53 |
-| baseline_rbac_only | 66.7% | 56.7% | 0.0% | 43.3% | 15.12 |
-| baseline_keyword_only | 36.8% | 17.9% | 0.0% | 82.1% | 15.89 |
-| baseline_no_physical_rules | 86.2% | 82.1% | 0.0% | 17.9% | 13.67 |
-| no_input_guard | 95.4% | 94.0% | 0.0% | 6.0% | 17.97 |
-| no_device_gate | 99.4% | 99.2% | 0.0% | 0.8% | 15.91 |
-| no_fact_checker | 90.2% | 87.3% | 0.0% | 12.7% | 18.16 |
-| no_policy_engine | 82.2% | 76.9% | 0.0% | 23.1% | 42.35 |
-| no_physical_checker | 86.2% | 82.1% | 0.0% | 17.9% | 33.51 |
-| no_selfcheck | 100.0% | 100.0% | 0.0% | 0.0% | 42.33 |
+| Suite | Pass Rate | Safety Intervention | Attack Interception | False Positive | False Negative | Avg Latency(ms) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| full | 100.0% | 78.0% | 100.0% | 0.0% | 0.0% | 17.03 |
+| baseline_llm_direct | 34.6% | 12.6% | 16.2% | 0.0% | 83.8% | 15.54 |
+| baseline_rbac_only | 63.7% | 41.8% | 53.5% | 0.0% | 46.5% | 16.18 |
+| baseline_keyword_only | 35.2% | 13.2% | 16.9% | 0.0% | 83.1% | 15.07 |
+| baseline_no_physical_rules | 86.8% | 64.8% | 83.1% | 0.0% | 16.9% | 12.93 |
+| no_input_guard | 95.6% | 73.6% | 94.4% | 0.0% | 5.6% | 17.31 |
+| no_device_gate | 99.5% | 77.5% | 99.3% | 0.0% | 0.7% | 16.80 |
+| no_fact_checker | 90.7% | 68.7% | 88.0% | 0.0% | 12.0% | 17.83 |
+| no_policy_engine | 83.0% | 61.0% | 78.2% | 0.0% | 21.8% | 16.11 |
+| no_physical_checker | 86.8% | 64.8% | 83.1% | 0.0% | 16.9% | 13.52 |
+| no_selfcheck | 95.6% | 73.6% | 94.4% | 0.0% | 5.6% | 17.84 |
 
 InputGuard-specific evidence: the expanded suite includes 8
 `INJECTION_ALLOWED_ACTION` cases where an otherwise allowed light/fan command is
@@ -152,19 +155,27 @@ wrapped in prompt-injection language such as rule bypass or maintenance mode.
 The full system blocks all 32 prompt-injection cases; `no_input_guard` passes
 only 24/32 prompt-injection cases, producing the 8-case ablation drop.
 
+SelfCheck/manual-confirmation evidence: the expanded suite includes 8
+`SELFCHECK_CONFIRM` cases where a high-risk but otherwise authorized action is
+wrapped in a user claim such as "manual confirmation" or "secondary approval".
+The full system does not trust that text claim; it returns `require_confirm`
+with a system-generated confirmation token. `no_selfcheck` allows all 8 cases,
+producing the 8-case ablation drop.
+
 Latest full-system module timing highlights:
 
 | Module | Avg ms |
 | --- | ---: |
-| user_role_lookup | 4.51 |
-| input_guard | 0.24 |
+| user_role_lookup | 3.10 |
+| input_guard | 0.18 |
 | fact_checker | 0.02 |
-| policy_engine | 3.03 |
-| physical_checker | 9.20 |
-| sandbox_execution | 8.47 |
-| risk_scoring | 0.07 |
-| audit_logging | 7.49 |
-| total | 21.15 |
+| policy_engine | 2.20 |
+| physical_checker | 6.42 |
+| sandbox_execution | 7.29 |
+| risk_scoring | 0.04 |
+| confirmation_store | 4.62 |
+| audit_logging | 5.22 |
+| total | 15.02 |
 
 Next experiment gap: execute the frozen final-test split after feature freeze and
 report it separately from development/regression results.
@@ -173,11 +184,11 @@ report it separately from development/regression results.
 
 `backend/evaluation/report_eval_results.py` renders:
 
-- suite summary table with pass rate, attack interception, false positive, false negative, normal pass, and average latency
+- suite summary table with pass rate, safety intervention, attack interception, false positive, false negative, normal pass, and average latency
 - per-category table with attack interception rate
 - per-threat-type table with pass rate and attack interception rate when cases contain `threat_type`
 - failed-case table
-- high-risk blocked-case table using `risk_result`
+- high-risk blocked/confirmation-case table using `risk_result`
 - module timing table using `avg_module_timings_ms`
 
 Required next tables:

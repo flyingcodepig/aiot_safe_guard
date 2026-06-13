@@ -1,10 +1,10 @@
 # Next Actions
 
-Updated: 2026-06-13 12:30 +08:00
+Updated: 2026-06-13 13:35 +08:00
 
 ## Active Focus
 
-Move from engineering features into competition evidence: frozen final-test evaluation, SelfCheck/frontend evidence, protocol-aware demo trace, and report-ready tables.
+Move from engineering evidence into frozen final-test evaluation, frontend/browser demo verification, and report/PPT-ready material.
 
 ## Master Workstreams
 
@@ -21,9 +21,9 @@ Move from engineering features into competition evidence: frozen final-test eval
    - Optional later extension: fake MQTT broker/webhook receiver, retry/failure simulation, and driver-failure safety tests.
 
 4. Formal evaluation dataset.
-   - Maintain the 174-case core regression suite and the 3674-case formal split corpus.
+   - Maintain the 182-case core regression suite and the 3682-case formal split corpus.
    - Preserve dev/validation/final-test separation and the no-tuning final-test protocol.
-   - Preserve the sharpened InputGuard cases and add sharper SelfCheck cases if ablation evidence remains weak.
+   - Preserve the sharpened InputGuard and SelfCheck/manual-confirmation cases.
 
 5. Metrics and experiment system.
    - Keep pass rate, block rate, attack interception, false positive, false negative, normal pass rate, per-category rate, per-threat-type rate, latency, and module timing in generated outputs.
@@ -54,9 +54,9 @@ Move from engineering features into competition evidence: frozen final-test eval
    - Target: execute `evaluation/datasets/security_cases_final_test.json` for the full system and selected baselines/ablations.
    - Important: do not tune on final-test failures used for official reporting; if inspected for fixes, regenerate/report a new frozen split with a new seed.
 
-2. Strengthen remaining ablation coverage.
+2. Run frozen final-test evidence after feature freeze.
    - Current expanded snapshot includes full, four named baselines, and six layer ablations.
-   - InputGuard now has isolating prompt-injection cases; add sharper SelfCheck cases in offline and online/model-backed settings.
+   - Full expanded regression now isolates InputGuard and SelfCheck/manual confirmation; next formal step is final-test reporting without tuning on failures.
 
 3. Runtime-check the demo trace.
    - Target: open the frontend against a running backend and visually verify natural-language input, LLM plan, layer decisions, risk score components/top factors, simulated MQTT/HTTP transport, execution result, device state, and audit replay.
@@ -79,6 +79,11 @@ Move from engineering features into competition evidence: frozen final-test eval
 - Regenerated the expanded suite to 174 cases and the formal split corpus to 3674 cases.
 - Regenerated `latest_eval.json`/`.md`: full system 174/174; `no_input_guard` 166/174 with all 8 regressions in `prompt_injection`.
 - Re-ran py_compile, device mention, risk scoring, device driver, transport driver API, and `git diff --check`.
+- Added offline-reproducible SelfCheck/manual-confirmation gate for high-risk actions where the user claims prior approval.
+- Added 8 `SELFCHECK_CONFIRM` cases and regenerated the expanded suite to 182 cases and the formal split corpus to 3682 cases.
+- Updated metrics and Markdown reports to count `require_confirm` as a safety intervention distinct from direct `block`.
+- Regenerated `latest_eval.json`/`.md`: full system 182/182; `no_selfcheck` 174/182 with all 8 regressions in `selfcheck`.
+- Added and ran `test_selfcheck_confirmation.py`.
 
 ## Remaining Driver Work
 
