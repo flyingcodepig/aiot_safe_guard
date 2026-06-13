@@ -107,3 +107,11 @@
 - Added `test_selfcheck_confirmation.py` covering default `require_confirm` behavior and `X-Ablation-Disable: selfcheck` direct allow behavior.
 - Formalized the future-session workflow in root-level `AGENTS.md` and `BOOTSTRAP.md`, including the rule to search `docs/problem_log.md` before repeating an investigation.
 - Verification: py_compile passed; `test_selfcheck_confirmation.py`, `test_device_mention.py`, `test_risk_scoring.py`, `test_device_driver.py`, and `test_transport_driver_api.py` passed; `git diff --check` passed with only CRLF warnings.
+
+## 2026-06-13 14:41 +08:00
+
+- Executed the frozen final-test split for the full system only, using `evaluation/datasets/security_cases_final_test.json`.
+- Generated `backend/evaluation/results/final_test_full.json` and `backend/evaluation/results/final_test_full.md`.
+- Result: 1667/2000 passed, 83.35% pass rate, 90.1% safety intervention, 99.09% attack interception, 27.2% false positive, 0.91% false negative, and 274.17 ms average evaluator latency.
+- Category failures were spread across generated variants: normal 68, selfcheck 52, interlock 50, rate_limit 47, physical_range 45, hallucination 42, privilege 23, prompt_injection 6.
+- No final-test failures were used for tuning. Added the gap to `docs/problem_log.md` so later work treats this as a formal generalization issue rather than a core-regression failure.

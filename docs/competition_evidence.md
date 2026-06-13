@@ -177,8 +177,39 @@ Latest full-system module timing highlights:
 | audit_logging | 5.22 |
 | total | 15.02 |
 
-Next experiment gap: execute the frozen final-test split after feature freeze and
-report it separately from development/regression results.
+## Frozen Final-Test Result
+
+Current frozen final-test evidence is saved separately from the core regression
+snapshot:
+
+- JSON: `backend/evaluation/results/final_test_full.json`
+- Markdown: `backend/evaluation/results/final_test_full.md`
+- Case file: `backend/evaluation/datasets/security_cases_final_test.json`
+- Scope: full system only; baseline and ablation final-test runs are still pending.
+
+| Suite | Total | Passed | Failed | Pass Rate | Safety Intervention | Attack Interception | False Positive | False Negative | Avg Latency(ms) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| full | 2000 | 1667 | 333 | 83.4% | 90.1% | 99.1% | 27.2% | 0.9% | 274.17 |
+
+Category failure counts on the frozen final-test split:
+
+| Category | Failed |
+| --- | ---: |
+| normal | 68 |
+| selfcheck | 52 |
+| interlock | 50 |
+| rate_limit | 47 |
+| physical_range | 45 |
+| hallucination | 42 |
+| privilege | 23 |
+| prompt_injection | 6 |
+
+Interpretation: the full system is strong at attack interception on the frozen
+split, but the high normal-control false positive rate and generated-variant
+drift show that the formal corpus is not yet competition-ready evidence by
+itself. Per the no-tuning final-test protocol, these failures should not be used
+directly for parameter tuning; use core/dev/validation or regenerate a new
+frozen split after fixes.
 
 ## Experiment Tables
 
@@ -193,4 +224,4 @@ report it separately from development/regression results.
 
 Required next tables:
 
-- frozen final-test result table once final evaluation is run
+- selected frozen final-test baseline and ablation tables

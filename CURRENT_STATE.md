@@ -1,6 +1,6 @@
 # Current State
 
-Updated: 2026-06-13 13:37 +08:00
+Updated: 2026-06-13 14:41 +08:00
 
 ## Branch And Checkpoint
 
@@ -10,25 +10,15 @@ Updated: 2026-06-13 13:37 +08:00
 
 ## Working Tree
 
-Known modified files:
+Expected tracked changes for the next checkpoint:
 
-- `CURRENT_STATE.md`
-- `GOAL.md`
-- `NEXT_ACTIONS.md`
-- `SESSION_LOG.md`
-- `RUNBOOK.md`
-- `backend/main.py`
-- `backend/evaluation/build_expanded_cases.py`
-- `backend/evaluation/build_formal_dataset.py`
-- `backend/evaluation/evaluate_security_cases.py`
-- `backend/evaluation/report_eval_results.py`
-- `backend/evaluation/datasets/*.json`
-- `backend/evaluation/datasets/README.md`
-- `backend/evaluation/results/latest_eval.json`
-- `backend/evaluation/results/latest_eval.md`
-- `backend/evaluation/security_cases_expanded.json`
-- `backend/test_selfcheck_confirmation.py`
 - `CHANGELOG.md`
+- `CURRENT_STATE.md`
+- `NEXT_ACTIONS.md`
+- `RUNBOOK.md`
+- `SESSION_LOG.md`
+- `backend/evaluation/results/final_test_full.json`
+- `backend/evaluation/results/final_test_full.md`
 - `docs/competition_evidence.md`
 - `docs/problem_log.md`
 
@@ -76,13 +66,16 @@ Volatile local artifacts under `backend/evaluation/results/` are ignored except 
 - Current verification passed: py_compile for backend/evaluation files; `test_selfcheck_confirmation.py`; `test_device_mention.py`; `test_risk_scoring.py`; `test_device_driver.py`; `test_transport_driver_api.py`; `git diff --check` passed with only CRLF warnings.
 - Added `docs/problem_log.md` as the durable issue/resolution index for recurring failures and workarounds.
 - Added root-level `AGENTS.md` and `BOOTSTRAP.md` so new sessions know to read handoff docs and search the problem log before debugging.
+- Frozen final-test full-system evaluation has now been executed and saved as `backend/evaluation/results/final_test_full.json` plus `.md`.
+- Frozen final-test full result: 1667/2000 passed, 83.35% pass rate, 90.1% safety intervention, 99.09% attack interception, 27.2% false positive, 0.91% false negative, 274.17 ms average evaluator latency.
 
 ## Known Problems
 
 - Offline evaluation disables LLM planning and LLM fact checks; a separate online/model-backed evaluation should be added later for model-backed SelfCheck behavior.
 - Frontend demo trace has static rendering support for risk score, component factors, action-level risk, simulated MQTT/HTTP transport, and audit replay; browser runtime verification is still desirable.
 - MQTT/HTTP support is currently simulated only; no real broker, webhook receiver, retry queue, or hardware adapter has been connected.
-- Frozen final-test split has been regenerated and format-checked, but has not yet been executed against the backend after feature freeze.
+- Frozen final-test full-system run exposes a generalization gap: strong attack interception but high normal-control false positives. Do not tune directly on inspected final-test failures unless reporting a new frozen split/seed.
+- Frozen final-test baseline and ablation runs are still pending; only the full-system final-test run has been saved.
 - `docs/sandbox_report.md` is currently untracked and should be reviewed before any cleanup or commit decision.
 - `backend/evaluation/results/input_guard_check.json` is an untracked targeted run; current recommendation is to keep the full `latest_eval.json` instead of committing this scratch artifact.
 - `backend/evaluation/results/selfcheck_check.json` is an untracked targeted run; current recommendation is to keep the full `latest_eval.json` instead of committing this scratch artifact.

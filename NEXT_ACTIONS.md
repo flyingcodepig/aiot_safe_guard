@@ -1,10 +1,10 @@
 # Next Actions
 
-Updated: 2026-06-13 13:35 +08:00
+Updated: 2026-06-13 14:41 +08:00
 
 ## Active Focus
 
-Move from engineering evidence into frozen final-test evaluation, frontend/browser demo verification, and report/PPT-ready material.
+Move from core-regression evidence into formal final-test improvement, selected final-test baseline/ablation reporting, frontend/browser demo verification, and report/PPT-ready material.
 
 ## Master Workstreams
 
@@ -50,13 +50,13 @@ Move from engineering evidence into frozen final-test evaluation, frontend/brows
 
 ## Immediate Tasks
 
-1. Run the frozen final-test evaluation after feature freeze.
-   - Target: execute `evaluation/datasets/security_cases_final_test.json` for the full system and selected baselines/ablations.
-   - Important: do not tune on final-test failures used for official reporting; if inspected for fixes, regenerate/report a new frozen split with a new seed.
+1. Improve formal final-test generalization without violating no-tuning protocol.
+   - Current frozen final-test full-system result is 1667/2000, with high attack interception but 27.2% false positives.
+   - Use core/dev/validation data for fixes; if final-test failures are inspected for tuning, regenerate/report a new frozen split with a new seed.
 
-2. Run frozen final-test evidence after feature freeze.
-   - Current expanded snapshot includes full, four named baselines, and six layer ablations.
-   - Full expanded regression now isolates InputGuard and SelfCheck/manual confirmation; next formal step is final-test reporting without tuning on failures.
+2. Run selected frozen final-test baselines/ablations.
+   - Full-system final-test run is complete and saved in `evaluation/results/final_test_full.json`/`.md`.
+   - Run selected baselines/ablations on final-test after deciding the reporting subset, because each full-system final-test pass expands to 4750 smart-command requests.
 
 3. Runtime-check the demo trace.
    - Target: open the frontend against a running backend and visually verify natural-language input, LLM plan, layer decisions, risk score components/top factors, simulated MQTT/HTTP transport, execution result, device state, and audit replay.
@@ -84,6 +84,8 @@ Move from engineering evidence into frozen final-test evaluation, frontend/brows
 - Updated metrics and Markdown reports to count `require_confirm` as a safety intervention distinct from direct `block`.
 - Regenerated `latest_eval.json`/`.md`: full system 182/182; `no_selfcheck` 174/182 with all 8 regressions in `selfcheck`.
 - Added and ran `test_selfcheck_confirmation.py`.
+- Ran frozen final-test for the full system only: 1667/2000 passed, 99.09% attack interception, 27.2% false positive, 0.91% false negative.
+- Generated `evaluation/results/final_test_full.json` and `evaluation/results/final_test_full.md`.
 
 ## Remaining Driver Work
 

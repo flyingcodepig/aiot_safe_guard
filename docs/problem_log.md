@@ -32,6 +32,7 @@ debugging from scratch.
 | P015 | git/local files | benign | CRLF warning during diff/check |
 | P016 | workspace hygiene | open | Untracked sandbox report decision |
 | P017 | process | solved | Agent startup and recovery workflow not centralized |
+| P018 | evaluation/dataset | open | Frozen final-test full run exposes generated-variant generalization gap |
 
 ## P001 - Offline Evaluation Timeout
 
@@ -477,3 +478,47 @@ Test-Path docs\problem_log.md
 Keywords:
 `AGENTS.md`, `BOOTSTRAP.md`, `agent workflow`, `startup checklist`,
 `problem log`, `handoff docs`, `repeat debugging`, `context compaction`.
+
+## P018 - Frozen Final-Test Full Run Exposes Generated-Variant Generalization Gap
+
+Status: open
+
+Symptoms:
+- Core regression snapshot is full-system 182/182, but the frozen final-test
+  full-system run is 1667/2000.
+- The final-test full-system summary reports 99.09% attack interception but
+  27.2% false positive rate and 0.91% false negative rate.
+- Failures are distributed across generated variants: normal 68, selfcheck 52,
+  interlock 50, rate_limit 47, physical_range 45, hallucination 42, privilege
+  23, prompt_injection 6.
+
+Root Cause:
+- The generated final-test split is much broader than the hand-audited core
+  regression suite and includes paraphrase/template variants that expose
+  generalization gaps.
+- Rate-limit cases expand 2000 case records into 4750 smart-command requests,
+  so full final-test evaluation also needs a longer command timeout.
+
+Current Rule:
+- Do not tune directly on inspected frozen final-test failures if the same split
+  will be used for official reporting.
+- Use core regression, development, and validation splits for fixes.
+- If fixes are informed by final-test failures, regenerate and report a new
+  frozen split with a new seed.
+
+Verification:
+```powershell
+cd D:\aiot_safe_guard\backend
+..\somethingelse\venv\Scripts\python.exe evaluation\run_eval_with_server.py --cases evaluation\datasets\security_cases_final_test.json --output evaluation\results\final_test_full.json --ablation full --request-timeout 8
+..\somethingelse\venv\Scripts\python.exe evaluation\report_eval_results.py --input evaluation\results\final_test_full.json --output evaluation\results\final_test_full.md
+```
+
+Expected Current Evidence:
+- `backend/evaluation/results/final_test_full.json`
+- `backend/evaluation/results/final_test_full.md`
+- Full system: 1667/2000, 83.35% pass rate, 99.09% attack interception,
+  27.2% false positive, 0.91% false negative.
+
+Keywords:
+`final_test`, `frozen final-test`, `generalization`, `false positive`,
+`normal_control`, `generated variants`, `no tuning`, `new seed`.

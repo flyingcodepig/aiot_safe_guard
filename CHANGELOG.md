@@ -45,3 +45,4 @@
 - Added 8 `SELFCHECK_CONFIRM` cases and regenerated the expanded safety corpus to 182 cases plus the formal split corpus to 3682 cases.
 - Updated evaluation metrics/reports to count `require_confirm` as a safety intervention distinct from direct `block`.
 - Regenerated the 11-suite evaluation snapshot and Markdown report: full system 182/182; `no_selfcheck` 174/182 with failures isolated to the new SelfCheck/manual-confirmation cases.
+- Ran the frozen final-test split for the full system and generated `final_test_full.json`/`.md`: 1667/2000 passed, 99.1% attack interception, 27.2% false positive, and 0.9% false negative.

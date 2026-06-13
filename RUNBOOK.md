@@ -96,7 +96,20 @@ It also includes a Threat Type Breakdown table when cases/results include `threa
 For post-freeze reporting on the formal final split, replace `--cases
 evaluation\security_cases_expanded.json` with `--cases
 evaluation\datasets\security_cases_final_test.json`. Expect a longer run because
-the final split contains 2000 cases, including repeated rate-limit cases.
+the final split contains 2000 case records but expands to 4750 smart-command
+requests because of repeated rate-limit cases.
+
+For a full-system-only frozen final-test run:
+
+```powershell
+cd D:\aiot_safe_guard\backend
+..\somethingelse\venv\Scripts\python.exe evaluation\run_eval_with_server.py --cases evaluation\datasets\security_cases_final_test.json --output evaluation\results\final_test_full.json --ablation full --request-timeout 8
+..\somethingelse\venv\Scripts\python.exe evaluation\report_eval_results.py --input evaluation\results\final_test_full.json --output evaluation\results\final_test_full.md
+```
+
+The current saved full-system final-test result is 1667/2000. Do not tune
+directly on inspected final-test failures unless a new frozen split/seed will be
+reported.
 
 Current expected generated counts with seed `20260612`: 182 core regression,
 1000 development, 500 validation, 2000 final-test, and 3682 formal-all cases.
