@@ -90,6 +90,7 @@ Move from corrected formal full-system evidence into selected final-test baselin
 - Generated `evaluation/results/final_test_full.json` and `evaluation/results/final_test_full.md`.
 - Added `--reset-each-case` for randomized formal split evaluation after diagnosing cross-case state leakage with validation data.
 - Re-ran isolated core, validation, and final-test full-system evidence: core 182/182, validation 436/500, final-test 1735/2000 with 0.0% false positive.
+- Consolidated cheap-model handoff workflow, long-term goal contract, and command harness into `BOOTSTRAP.md`, `AGENTS.md`, and `RUNBOOK.md`.
 
 ## Remaining Driver Work
 

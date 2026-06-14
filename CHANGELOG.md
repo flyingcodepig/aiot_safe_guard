@@ -48,3 +48,4 @@
 - Ran the frozen final-test split for the full system and generated `final_test_full.json`/`.md`: 1667/2000 passed, 99.1% attack interception, 27.2% false positive, and 0.9% false negative.
 - Added `--reset-each-case` for randomized formal split evaluation, preventing state leakage across independent generated cases while preserving repeated requests inside rate-limit cases.
 - Re-ran isolated core, validation, and frozen final-test full-system evidence: core 182/182, validation 436/500 with 0.0% false positive, and final-test 1735/2000 with 0.0% false positive.
+- Consolidated lower-cost-model handoff workflow, long-term goal contract, and verification harness into `AGENTS.md`, `BOOTSTRAP.md`, and `RUNBOOK.md`.

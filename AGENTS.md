@@ -22,6 +22,45 @@ agents. Read it before making assumptions or edits.
 3. Treat the current worktree as authoritative. Previous chat context can help
    locate work, but it is not proof of current state.
 
+## Long-Term Goal Contract
+
+The durable project goal is:
+
+> Build AIoT Safe Guard into a competition-grade work comparable to a first-prize
+> information-security contest entry, positioned as a trusted instruction
+> security gateway for LLM-Agent controlled AIoT.
+
+Every stage should move at least one of these evidence areas forward:
+
+- reproducible engineering workflow
+- formal evaluation dataset
+- metrics and experiment tables
+- baseline comparison
+- ablation experiments
+- risk scoring
+- closed-loop demo
+- simulated or real device handoff
+- audit and manual-confirmation capability
+- report, PPT, and defense material
+
+Do not mark the long-term goal complete unless current files, commands, reports,
+runtime evidence, and rendered artifacts prove every requirement.
+
+## Lower-Cost Model Workflow
+
+When a smaller or cheaper model takes over, keep the loop intentionally narrow:
+
+1. Read `BOOTSTRAP.md`, then perform the startup checklist above.
+2. Pick exactly one immediate task from `NEXT_ACTIONS.md` or one open problem
+   from `docs/problem_log.md`.
+3. Inspect only the relevant source, data, docs, and current diff.
+4. Make a small scoped change.
+5. Run the smallest meaningful harness from `RUNBOOK.md`.
+6. Update `SESSION_LOG.md`, `CURRENT_STATE.md`, `NEXT_ACTIONS.md`, and any
+   evidence/problem document affected by changed numbers or behavior.
+7. Run `git diff --check` and inspect `git status --short --untracked-files=all`.
+8. Commit only a coherent verified checkpoint.
+
 ## Problem-First Debugging
 
 Before investigating a failure, search `docs/problem_log.md` by symptom,
@@ -53,6 +92,9 @@ If a meaningful new issue is solved, update `docs/problem_log.md` with:
   user explicitly asks.
 - Treat `backend/evaluation/results/input_guard_check.json` as a scratch
   targeted evaluation artifact unless the user decides to keep it.
+- Treat `backend/evaluation/results/selfcheck_check.json` and non-isolated
+  diagnostic runs such as `validation_full.json` as scratch unless they are
+  explicitly promoted to evidence.
 - Review risk-scoring related files before changing them:
   - `backend/risk_scoring.py`
   - `backend/test_risk_scoring.py`
@@ -94,6 +136,13 @@ For evaluation evidence:
 cd D:\aiot_safe_guard\backend
 ..\somethingelse\venv\Scripts\python.exe evaluation\run_eval_with_server.py --cases evaluation\security_cases_expanded.json --output evaluation\results\latest_eval.json --request-timeout 8
 ..\somethingelse\venv\Scripts\python.exe evaluation\report_eval_results.py --input evaluation\results\latest_eval.json --output evaluation\results\latest_eval.md
+```
+
+For randomized formal split evidence, always isolate cases:
+
+```powershell
+cd D:\aiot_safe_guard\backend
+..\somethingelse\venv\Scripts\python.exe evaluation\run_eval_with_server.py --cases evaluation\datasets\security_cases_validation.json --output evaluation\results\validation_full_isolated.json --ablation full --reset-each-case --request-timeout 8
 ```
 
 Always finish with:

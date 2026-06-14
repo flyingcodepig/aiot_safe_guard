@@ -13,6 +13,31 @@ read the required handoff files, then continue the active long-term goal. Do not
 mark the goal complete unless every requirement is proven by current evidence.
 ```
 
+## Cheap-Model Handoff Prompt
+
+Use this prompt when a cheaper model takes over the project:
+
+```text
+请接手 D:\aiot_safe_guard 项目，严格按照 AGENTS.md 和 BOOTSTRAP.md 工作。
+先运行 git status --short --untracked-files=all 和 git log -1 --oneline。
+然后读取 GOAL.md、CURRENT_STATE.md、NEXT_ACTIONS.md、SESSION_LOG.md、RUNBOOK.md、CHANGELOG.md、docs/problem_log.md、docs/competition_evidence.md。
+当前最新稳定 checkpoint 以 git log -1 --oneline 为准；不要依赖聊天记忆。
+formal split 评测必须使用 --reset-each-case。
+不要处理 docs/sandbox_report.md，除非用户明确要求。
+当前优先任务通常来自 NEXT_ACTIONS.md，尤其是 P019 block vs require_confirm 决策边界、selected final-test baseline/ablation、前端浏览器 demo 验证、报告/PPT材料。
+每次只做一个可验证阶段，跑相关测试，更新 handoff 文档，最后 git diff --check，并在成果 coherent 时提交 checkpoint。
+不要标记长期 goal 完成。
+```
+
+Minimum behavior for a lower-cost model:
+
+1. Prefer reading current files over recalling chat.
+2. Prefer small, verified stages over broad rewrites.
+3. Prefer `rg` and existing scripts over improvised inspection.
+4. Before debugging, search `docs/problem_log.md`.
+5. Before formal split evaluation, add `--reset-each-case`.
+6. Before commit, run `git diff --check` and inspect `git status --short --untracked-files=all`.
+
 ## Startup Commands
 
 Run these first:

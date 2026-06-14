@@ -124,3 +124,10 @@
 - Re-ran isolated evidence: `core_full_isolated.json` passed 182/182; `validation_full_isolated.json` passed 436/500 with 100.0% normal pass and 0.0% false positive.
 - Re-ran frozen final-test full system with `--reset-each-case`: 1735/2000 passed, 86.75% pass rate, 99.09% attack interception, 0.0% false positive, 0.91% false negative, and 281.25 ms average evaluator latency.
 - Remaining formal split failures are mostly `block` vs `require_confirm` label/decision-boundary mismatches, plus a small number of actual allows.
+
+## 2026-06-14 16:20 +08:00
+
+- Consolidated the cheaper-model takeover instructions into existing Markdown docs.
+- `BOOTSTRAP.md` now includes a copy-ready cheap-model handoff prompt and minimum behavior rules.
+- `AGENTS.md` now includes the long-term goal contract and lower-cost model workflow.
+- `RUNBOOK.md` now includes a compact handoff harness and updated smoke-test compile command.

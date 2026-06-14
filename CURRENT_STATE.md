@@ -1,32 +1,24 @@
 # Current State
 
-Updated: 2026-06-14 16:05 +08:00
+Updated: 2026-06-14 16:20 +08:00
 
 ## Branch And Checkpoint
 
 - Branch: `codex-aiot-award-automation`
-- Last stable commit before this checkpoint: `f1c2f03 test: record frozen final test full run`
+- Last stable commit before this checkpoint: `b77f48b test: isolate formal split evaluation cases`
 - Goal status: active, not complete
 
 ## Working Tree
 
 Expected tracked changes for the next checkpoint:
 
+- `AGENTS.md`
+- `BOOTSTRAP.md`
 - `CHANGELOG.md`
 - `CURRENT_STATE.md`
 - `NEXT_ACTIONS.md`
 - `RUNBOOK.md`
 - `SESSION_LOG.md`
-- `backend/evaluation/evaluate_security_cases.py`
-- `backend/evaluation/run_eval_with_server.py`
-- `backend/evaluation/results/core_full_isolated.json`
-- `backend/evaluation/results/core_full_isolated.md`
-- `backend/evaluation/results/validation_full_isolated.json`
-- `backend/evaluation/results/validation_full_isolated.md`
-- `backend/evaluation/results/final_test_full.json`
-- `backend/evaluation/results/final_test_full.md`
-- `docs/competition_evidence.md`
-- `docs/problem_log.md`
 
 Known untracked files:
 
@@ -79,6 +71,7 @@ Volatile local artifacts under `backend/evaluation/results/` are ignored except 
 - Isolated validation full-system check: 436/500, 87.2% pass rate, 99.54% attack interception, 0.0% false positive, 0.46% false negative.
 - Frozen final-test full-system evaluation has been re-run with `--reset-each-case` and saved as `backend/evaluation/results/final_test_full.json` plus `.md`.
 - Frozen final-test full result: 1735/2000 passed, 86.75% pass rate, 86.7% safety intervention, 99.09% attack interception, 0.0% false positive, 0.91% false negative, 281.25 ms average evaluator latency.
+- Lower-cost-model takeover workflow, goal contract, and command harness are now documented in `BOOTSTRAP.md`, `AGENTS.md`, and `RUNBOOK.md`.
 
 ## Known Problems
 

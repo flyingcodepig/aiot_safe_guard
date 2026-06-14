@@ -6,10 +6,44 @@ This file is the restart guide for a new session. Read it together with `GOAL.md
 
 ```powershell
 cd D:\aiot_safe_guard
-git status --short
+git status --short --untracked-files=all
 git branch --show-current
 git log -1 --oneline
 ```
+
+## Handoff Harness
+
+Use this compact harness when a new or lower-cost model takes over:
+
+```powershell
+cd D:\aiot_safe_guard
+git status --short --untracked-files=all
+git log -1 --oneline
+```
+
+Required reading after the commands above:
+
+```text
+AGENTS.md
+BOOTSTRAP.md
+GOAL.md
+CURRENT_STATE.md
+NEXT_ACTIONS.md
+SESSION_LOG.md
+RUNBOOK.md
+CHANGELOG.md
+docs/problem_log.md
+docs/competition_evidence.md
+```
+
+Operating rules:
+
+- Use current files and command output as authoritative.
+- Before debugging, search `docs/problem_log.md`.
+- Work one verifiable stage at a time.
+- Do not touch `docs/sandbox_report.md` unless explicitly requested.
+- Use `--reset-each-case` for randomized formal split evaluation.
+- Finish with `git diff --check` and `git status --short --untracked-files=all`.
 
 ## Problem Lookup
 
@@ -21,7 +55,7 @@ sessions do not repeat the same investigation.
 
 ```powershell
 cd D:\aiot_safe_guard\backend
-..\somethingelse\venv\Scripts\python.exe -m py_compile audit.py database.py main.py models.py risk_scoring.py test_risk_scoring.py
+..\somethingelse\venv\Scripts\python.exe -m py_compile audit.py database.py main.py models.py risk_scoring.py test_risk_scoring.py evaluation\evaluate_security_cases.py evaluation\run_eval_with_server.py evaluation\report_eval_results.py
 ..\somethingelse\venv\Scripts\python.exe test_selfcheck_confirmation.py
 ..\somethingelse\venv\Scripts\python.exe test_device_mention.py
 ..\somethingelse\venv\Scripts\python.exe test_risk_scoring.py
