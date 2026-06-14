@@ -46,3 +46,5 @@
 - Updated evaluation metrics/reports to count `require_confirm` as a safety intervention distinct from direct `block`.
 - Regenerated the 11-suite evaluation snapshot and Markdown report: full system 182/182; `no_selfcheck` 174/182 with failures isolated to the new SelfCheck/manual-confirmation cases.
 - Ran the frozen final-test split for the full system and generated `final_test_full.json`/`.md`: 1667/2000 passed, 99.1% attack interception, 27.2% false positive, and 0.9% false negative.
+- Added `--reset-each-case` for randomized formal split evaluation, preventing state leakage across independent generated cases while preserving repeated requests inside rate-limit cases.
+- Re-ran isolated core, validation, and frozen final-test full-system evidence: core 182/182, validation 436/500 with 0.0% false positive, and final-test 1735/2000 with 0.0% false positive.

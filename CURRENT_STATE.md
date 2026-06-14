@@ -1,11 +1,11 @@
 # Current State
 
-Updated: 2026-06-13 14:41 +08:00
+Updated: 2026-06-14 16:05 +08:00
 
 ## Branch And Checkpoint
 
 - Branch: `codex-aiot-award-automation`
-- Last stable commit before this checkpoint: `96bd68a docs: add recurring problem log`
+- Last stable commit before this checkpoint: `f1c2f03 test: record frozen final test full run`
 - Goal status: active, not complete
 
 ## Working Tree
@@ -17,6 +17,12 @@ Expected tracked changes for the next checkpoint:
 - `NEXT_ACTIONS.md`
 - `RUNBOOK.md`
 - `SESSION_LOG.md`
+- `backend/evaluation/evaluate_security_cases.py`
+- `backend/evaluation/run_eval_with_server.py`
+- `backend/evaluation/results/core_full_isolated.json`
+- `backend/evaluation/results/core_full_isolated.md`
+- `backend/evaluation/results/validation_full_isolated.json`
+- `backend/evaluation/results/validation_full_isolated.md`
 - `backend/evaluation/results/final_test_full.json`
 - `backend/evaluation/results/final_test_full.md`
 - `docs/competition_evidence.md`
@@ -27,6 +33,8 @@ Known untracked files:
 - `docs/sandbox_report.md`
 - `backend/evaluation/results/input_guard_check.json`
 - `backend/evaluation/results/selfcheck_check.json`
+- `backend/evaluation/results/validation_full.json`
+- `backend/evaluation/results/validation_full.md`
 
 Volatile local artifacts under `backend/evaluation/results/` are ignored except intentionally saved JSON reports.
 
@@ -66,19 +74,24 @@ Volatile local artifacts under `backend/evaluation/results/` are ignored except 
 - Current verification passed: py_compile for backend/evaluation files; `test_selfcheck_confirmation.py`; `test_device_mention.py`; `test_risk_scoring.py`; `test_device_driver.py`; `test_transport_driver_api.py`; `git diff --check` passed with only CRLF warnings.
 - Added `docs/problem_log.md` as the durable issue/resolution index for recurring failures and workarounds.
 - Added root-level `AGENTS.md` and `BOOTSTRAP.md` so new sessions know to read handoff docs and search the problem log before debugging.
-- Frozen final-test full-system evaluation has now been executed and saved as `backend/evaluation/results/final_test_full.json` plus `.md`.
-- Frozen final-test full result: 1667/2000 passed, 83.35% pass rate, 90.1% safety intervention, 99.09% attack interception, 27.2% false positive, 0.91% false negative, 274.17 ms average evaluator latency.
+- Formal split evaluation now supports `--reset-each-case` to isolate randomized generated cases while preserving repeated requests inside a single rate-limit case.
+- Isolated core full-system check: 182/182, 100.0% attack interception, 0.0% false positive, 0.0% false negative.
+- Isolated validation full-system check: 436/500, 87.2% pass rate, 99.54% attack interception, 0.0% false positive, 0.46% false negative.
+- Frozen final-test full-system evaluation has been re-run with `--reset-each-case` and saved as `backend/evaluation/results/final_test_full.json` plus `.md`.
+- Frozen final-test full result: 1735/2000 passed, 86.75% pass rate, 86.7% safety intervention, 99.09% attack interception, 0.0% false positive, 0.91% false negative, 281.25 ms average evaluator latency.
 
 ## Known Problems
 
 - Offline evaluation disables LLM planning and LLM fact checks; a separate online/model-backed evaluation should be added later for model-backed SelfCheck behavior.
 - Frontend demo trace has static rendering support for risk score, component factors, action-level risk, simulated MQTT/HTTP transport, and audit replay; browser runtime verification is still desirable.
 - MQTT/HTTP support is currently simulated only; no real broker, webhook receiver, retry queue, or hardware adapter has been connected.
-- Frozen final-test full-system run exposes a generalization gap: strong attack interception but high normal-control false positives. Do not tune directly on inspected final-test failures unless reporting a new frozen split/seed.
+- Previous frozen final-test false positives were caused by evaluation state leakage across randomized generated cases and are addressed by `--reset-each-case`.
+- Remaining formal split failures are mostly `block` vs `require_confirm` label/decision-boundary mismatches; do not tune directly on inspected final-test failures unless reporting a new frozen split/seed.
 - Frozen final-test baseline and ablation runs are still pending; only the full-system final-test run has been saved.
 - `docs/sandbox_report.md` is currently untracked and should be reviewed before any cleanup or commit decision.
 - `backend/evaluation/results/input_guard_check.json` is an untracked targeted run; current recommendation is to keep the full `latest_eval.json` instead of committing this scratch artifact.
 - `backend/evaluation/results/selfcheck_check.json` is an untracked targeted run; current recommendation is to keep the full `latest_eval.json` instead of committing this scratch artifact.
+- `backend/evaluation/results/validation_full.json` and `.md` are untracked non-isolated diagnostic runs kept only to prove the state-leakage diagnosis; current recommendation is to commit the isolated reports instead.
 - Future debugging should search `docs/problem_log.md` before repeating an investigation.
 
 ## Process Rule

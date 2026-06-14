@@ -186,6 +186,7 @@ def run_suite(
     ablation_name: str,
     disabled_layers: list[str],
     reset_before: bool,
+    reset_each_case: bool,
     request_timeout: float,
 ) -> dict[str, Any]:
     headers = make_headers(api_key=api_key, disabled_layers=disabled_layers)
@@ -193,7 +194,12 @@ def run_suite(
         if reset_before:
             resp = client.post("/api/reset", timeout=request_timeout)
             resp.raise_for_status()
-        results = [run_case(client, case, request_timeout) for case in cases]
+        results = []
+        for case in cases:
+            if reset_each_case:
+                resp = client.post("/api/reset", timeout=request_timeout)
+                resp.raise_for_status()
+            results.append(run_case(client, case, request_timeout))
 
     return {
         "ablation": ablation_name,
@@ -316,6 +322,11 @@ def main() -> int:
         + ", ".join(ABLATION_PROFILES),
     )
     parser.add_argument("--no-reset-before", action="store_true")
+    parser.add_argument(
+        "--reset-each-case",
+        action="store_true",
+        help="Reset backend state before every case. Use for randomized formal splits so rate buckets and device setup do not leak across cases.",
+    )
     parser.add_argument("--request-timeout", type=float, default=10.0)
     parser.add_argument("--summary-only", action="store_true")
     args = parser.parse_args()
@@ -337,6 +348,7 @@ def main() -> int:
                 ablation_name=name,
                 disabled_layers=disabled_layers,
                 reset_before=not args.no_reset_before,
+                reset_each_case=args.reset_each_case,
                 request_timeout=args.request_timeout,
             )
         )

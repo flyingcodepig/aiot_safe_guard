@@ -59,6 +59,11 @@ def main() -> int:
     parser.add_argument("--api-key", default="")
     parser.add_argument("--print-full-json", action="store_true")
     parser.add_argument(
+        "--reset-each-case",
+        action="store_true",
+        help="Reset backend state before each case. Recommended for randomized formal split files.",
+    )
+    parser.add_argument(
         "--ablation",
         nargs="*",
         default=[
@@ -139,6 +144,8 @@ def main() -> int:
             ]
             if not args.print_full_json:
                 cmd.append("--summary-only")
+            if args.reset_each_case:
+                cmd.append("--reset-each-case")
             result = subprocess.run(cmd, cwd=BACKEND_DIR, text=True)
             return result.returncode
         finally:

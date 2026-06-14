@@ -185,17 +185,20 @@ snapshot:
 - JSON: `backend/evaluation/results/final_test_full.json`
 - Markdown: `backend/evaluation/results/final_test_full.md`
 - Case file: `backend/evaluation/datasets/security_cases_final_test.json`
+- Evaluation protocol: `--reset-each-case` is used for randomized formal split
+  files so independent generated cases do not share device state, rate-limit
+  buckets, or pending confirmations. Repeated requests inside one rate-limit
+  case are still preserved.
 - Scope: full system only; baseline and ablation final-test runs are still pending.
 
 | Suite | Total | Passed | Failed | Pass Rate | Safety Intervention | Attack Interception | False Positive | False Negative | Avg Latency(ms) |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| full | 2000 | 1667 | 333 | 83.4% | 90.1% | 99.1% | 27.2% | 0.9% | 274.17 |
+| full | 2000 | 1735 | 265 | 86.8% | 86.7% | 99.1% | 0.0% | 0.9% | 281.25 |
 
 Category failure counts on the frozen final-test split:
 
 | Category | Failed |
 | --- | ---: |
-| normal | 68 |
 | selfcheck | 52 |
 | interlock | 50 |
 | rate_limit | 47 |
@@ -203,12 +206,21 @@ Category failure counts on the frozen final-test split:
 | hallucination | 42 |
 | privilege | 23 |
 | prompt_injection | 6 |
+| normal | 0 |
 
-Interpretation: the full system is strong at attack interception on the frozen
-split, but the high normal-control false positive rate and generated-variant
-drift show that the formal corpus is not yet competition-ready evidence by
-itself. Per the no-tuning final-test protocol, these failures should not be used
-directly for parameter tuning; use core/dev/validation or regenerate a new
+Supporting isolated checks:
+
+| Split | Total | Passed | Pass Rate | Attack Interception | False Positive | False Negative |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| core regression | 182 | 182 | 100.0% | 100.0% | 0.0% | 0.0% |
+| validation | 500 | 436 | 87.2% | 99.5% | 0.0% | 0.5% |
+
+Interpretation: after isolating formal cases, the full system keeps normal
+requests passing while preserving high attack interception. Remaining failures
+are mostly strict expected-decision mismatches where the system returns
+`require_confirm` for cases labeled `block`, plus a small number of actual
+allows. Per the no-tuning final-test protocol, final-test failures should not be
+used directly for parameter tuning; use core/dev/validation or regenerate a new
 frozen split after fixes.
 
 ## Experiment Tables
@@ -225,3 +237,35 @@ frozen split after fixes.
 Required next tables:
 
 - selected frozen final-test baseline and ablation tables
+
+## Benchmark Report Alignment
+
+The external benchmark report at
+`D:\XAS\资料准备\信安赛作品报告.pdf` is accessible in this environment. It has
+57 PDF pages and a competition-report structure with:
+
+- abstract and keywords
+- work overview: background/significance, related work, functionality/features,
+  application prospects
+- design and implementation: architecture, frontend, backend, model/algorithm,
+  safety/evaluation strategy
+- testing and analysis: environment, dataset/metrics, baseline experiments,
+  result analysis, performance evaluation
+- innovation explanation
+- summary, promotion, and future work
+
+Current AIoT Safe Guard evidence is strongest in work definition, threat model,
+dataset split/manifest, metrics, core regression, baselines/ablations, risk
+scoring, audit chain, manual confirmation, and simulated MQTT/HTTP handoff.
+
+Remaining benchmark gaps before report/PPT quality matches that reference:
+
+- polished architecture diagrams and frontend screenshots
+- browser-verified demo trace and audit replay screenshots
+- formal baseline/ablation tables on selected final-test subsets or a clearly
+  justified reporting protocol
+- performance/resource evaluation beyond request latency and module timings
+- related-work section for LLM-Agent safety, prompt injection, IoT access
+  control, and cyber-physical safety constraints
+- final report narrative, limitations, promotion/application prospects, and
+  defense Q&A material

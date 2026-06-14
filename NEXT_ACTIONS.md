@@ -1,10 +1,10 @@
 # Next Actions
 
-Updated: 2026-06-13 14:41 +08:00
+Updated: 2026-06-14 16:05 +08:00
 
 ## Active Focus
 
-Move from core-regression evidence into formal final-test improvement, selected final-test baseline/ablation reporting, frontend/browser demo verification, and report/PPT-ready material.
+Move from corrected formal full-system evidence into selected final-test baseline/ablation reporting, `block`/`require_confirm` decision-boundary cleanup, frontend/browser demo verification, and report/PPT-ready material.
 
 ## Master Workstreams
 
@@ -50,12 +50,14 @@ Move from core-regression evidence into formal final-test improvement, selected 
 
 ## Immediate Tasks
 
-1. Improve formal final-test generalization without violating no-tuning protocol.
-   - Current frozen final-test full-system result is 1667/2000, with high attack interception but 27.2% false positives.
-   - Use core/dev/validation data for fixes; if final-test failures are inspected for tuning, regenerate/report a new frozen split with a new seed.
+1. Tighten formal split decision semantics without violating no-tuning protocol.
+   - Current isolated frozen final-test full-system result is 1735/2000, with 99.09% attack interception and 0.0% false positives.
+   - Remaining failures are mostly `block` vs `require_confirm`; use core/dev/validation data for fixes or label-policy decisions.
+   - If final-test failures are inspected for tuning, regenerate/report a new frozen split with a new seed.
 
 2. Run selected frozen final-test baselines/ablations.
    - Full-system final-test run is complete and saved in `evaluation/results/final_test_full.json`/`.md`.
+   - Use `--reset-each-case` for formal split runs.
    - Run selected baselines/ablations on final-test after deciding the reporting subset, because each full-system final-test pass expands to 4750 smart-command requests.
 
 3. Runtime-check the demo trace.
@@ -86,6 +88,8 @@ Move from core-regression evidence into formal final-test improvement, selected 
 - Added and ran `test_selfcheck_confirmation.py`.
 - Ran frozen final-test for the full system only: 1667/2000 passed, 99.09% attack interception, 27.2% false positive, 0.91% false negative.
 - Generated `evaluation/results/final_test_full.json` and `evaluation/results/final_test_full.md`.
+- Added `--reset-each-case` for randomized formal split evaluation after diagnosing cross-case state leakage with validation data.
+- Re-ran isolated core, validation, and final-test full-system evidence: core 182/182, validation 436/500, final-test 1735/2000 with 0.0% false positive.
 
 ## Remaining Driver Work
 

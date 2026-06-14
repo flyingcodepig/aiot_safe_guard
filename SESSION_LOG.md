@@ -115,3 +115,12 @@
 - Result: 1667/2000 passed, 83.35% pass rate, 90.1% safety intervention, 99.09% attack interception, 27.2% false positive, 0.91% false negative, and 274.17 ms average evaluator latency.
 - Category failures were spread across generated variants: normal 68, selfcheck 52, interlock 50, rate_limit 47, physical_range 45, hallucination 42, privilege 23, prompt_injection 6.
 - No final-test failures were used for tuning. Added the gap to `docs/problem_log.md` so later work treats this as a formal generalization issue rather than a core-regression failure.
+
+## 2026-06-14 16:05 +08:00
+
+- Followed `BOOTSTRAP.md`: inspected worktree, read handoff/problem/evidence docs, and directly inspected the external benchmark PDF structure with `pypdf`.
+- Diagnosed the high formal-split false positive rate as evaluation state leakage across randomized generated cases, not a safety-policy regression.
+- Added `--reset-each-case` to `evaluation/evaluate_security_cases.py` and `evaluation/run_eval_with_server.py`.
+- Re-ran isolated evidence: `core_full_isolated.json` passed 182/182; `validation_full_isolated.json` passed 436/500 with 100.0% normal pass and 0.0% false positive.
+- Re-ran frozen final-test full system with `--reset-each-case`: 1735/2000 passed, 86.75% pass rate, 99.09% attack interception, 0.0% false positive, 0.91% false negative, and 281.25 ms average evaluator latency.
+- Remaining formal split failures are mostly `block` vs `require_confirm` label/decision-boundary mismatches, plus a small number of actual allows.
