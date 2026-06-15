@@ -7,6 +7,6 @@ httpx==0.25.1
 openai>=1.0.0
 llm-guard>=0.4.0
 
-# 可选：SelfCheckGPT NLI 模式需要（会使镜像增大 ~2GB）
+# Optional: SelfCheckGPT NLI mode (adds ~2GB via torch)
 # selfcheckgpt>=0.0.5
 # torch>=2.0.0
