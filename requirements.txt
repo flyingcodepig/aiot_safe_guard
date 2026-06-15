@@ -6,4 +6,7 @@ python-dotenv==1.0.0
 httpx==0.25.1
 openai>=1.0.0
 llm-guard>=0.4.0
-selfcheckgpt>=0.0.5
+
+# 可选：SelfCheckGPT NLI 模式需要（会使镜像增大 ~2GB）
+# selfcheckgpt>=0.0.5
+# torch>=2.0.0
