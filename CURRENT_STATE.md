@@ -1,24 +1,30 @@
 # Current State
 
-Updated: 2026-06-14 16:20 +08:00
+Updated: 2026-06-14 16:50 +08:00
 
 ## Branch And Checkpoint
 
 - Branch: `codex-aiot-award-automation`
-- Last stable commit before this checkpoint: `b77f48b test: isolate formal split evaluation cases`
+- Last commit: `da9da42 docs: consolidate handoff workflow harness`
 - Goal status: active, not complete
 
 ## Working Tree
 
 Expected tracked changes for the next checkpoint:
 
-- `AGENTS.md`
-- `BOOTSTRAP.md`
+- `backend/evaluation/evaluate_security_cases.py` — added `safety_correct`, `safety_correct_rate`, `decision_mismatches`, `trust_env=False`
+- `backend/evaluation/report_eval_results.py` — added Safety Correct column, Decision Mismatch Breakdown section
+- `backend/evaluation/run_eval_with_server.py` — added `trust_env=False` for httpx health check
+- `backend/evaluation/results/latest_eval.json` — regenerated 11-suite snapshot with new metrics
+- `backend/evaluation/results/latest_eval.md` — regenerated report with new metrics
+- `backend/evaluation/results/validation_full_isolated.json` — regenerated with new metrics
+- `backend/evaluation/results/validation_full_isolated.md` — regenerated with new metrics
 - `CHANGELOG.md`
 - `CURRENT_STATE.md`
 - `NEXT_ACTIONS.md`
-- `RUNBOOK.md`
 - `SESSION_LOG.md`
+- `docs/problem_log.md` — P019 status changed to solved
+- `docs/competition_evidence.md` — updated with safety_correct_rate metric
 
 Known untracked files:
 
@@ -27,64 +33,32 @@ Known untracked files:
 - `backend/evaluation/results/selfcheck_check.json`
 - `backend/evaluation/results/validation_full.json`
 - `backend/evaluation/results/validation_full.md`
+- `信安赛作品报告.pdf` (the competition benchmark PDF)
 
 Volatile local artifacts under `backend/evaluation/results/` are ignored except intentionally saved JSON reports.
 
 ## Verified So Far
 
-- Python compile check passed for risk-scoring integration files.
-- `backend/test_device_mention.py` passed.
-- `backend/test_risk_scoring.py` passed.
-- API check confirmed `risk_result` appears in `/api/smart_command`, each smart `action_result`, `/api/logs`, JSON export, and CSV export.
-- Offline dataset summary detected 182 expanded cases across eight categories.
-- Uvicorn can start with offline-friendly evaluation environment.
-- `/health` returns 200 when the evaluation wrapper starts the backend.
-- Managed offline evaluation now completes without timeout.
-- `evaluation/results/latest_eval.json`: expanded full 182/182; no input guard 174/182; no device gate 181/182; no fact checker 165/182; no policy engine 151/182; no physical checker 158/182; no selfcheck 174/182.
-- InputGuard ablation now has isolated evidence: 8 `INJECTION_ALLOWED_ACTION` prompt-injection cases are blocked by the full system and allowed when InputGuard is disabled.
-- SelfCheck/manual-confirmation ablation now has isolated evidence: 8 `SELFCHECK_CONFIRM` cases return `require_confirm` in the full system and are allowed when SelfCheck is disabled.
-- `evaluation/results/latest_eval.md` contains Markdown tables for report reuse.
-- Risk scoring now covers input risk, device criticality, permission risk, parameter boundaries, physical/interlock state, and model consistency.
-- Smart-command responses include overall `risk_result`; every `action_result` includes its own `risk_result`; audit logs persist `risk_result`.
-- Project goal has been re-scoped in `GOAL.md` as a trusted instruction security gateway for LLM-Agent controlled AIoT.
-- Added `docs/competition_evidence.md` to map work definition, three innovation points, dataset coverage, metrics, baselines, ablations, and experiment-table gaps.
-- Evaluation summaries now include block rate, normal pass rate, attack interception rate, false positive rate, false negative rate, and average latency.
-- Added named baseline profiles: `baseline_llm_direct`, `baseline_rbac_only`, `baseline_keyword_only`, and `baseline_no_physical_rules`.
-- Latest generated experiment table covers 11 suites: full, four baselines, and six ablations.
-- Backend smart-command responses now include `timings_ms` for user lookup, input guard, LLM planning, parsing, device gate, intent gate, SelfCheck, fallback matching, fact checker, policy engine, physical checker, sandbox execution, risk scoring, audit logging, and total request time.
-- Evaluation summaries aggregate `avg_module_timings_ms`; `evaluation/results/latest_eval.md` now includes a Module Timing table.
-- Headline full-system result: 182/182, 100.0% attack interception, 78.0% safety intervention, 0.0% false positive, 0.0% false negative, 17.03 ms average evaluator latency, 15.02 ms average backend total timing.
-- Added a formal split dataset under `backend/evaluation/datasets/`: 182 core regression, 1000 development, 500 validation, and 2000 frozen final-test cases.
-- Formal dataset metadata now includes `threat_type`, `dataset_split`, `source`, `base_case_id`, `variant_id`, `seed`, `text_fingerprint`, and `tuning_policy`.
-- `security_cases_formal_manifest.json` records seed `20260612`, split/category/threat counts, freeze policy, and SHA-256 hashes.
-- Evaluation results now preserve and summarize `threat_type`; `evaluation/results/latest_eval.md` includes a Threat Type Breakdown table.
-- Added simulated MQTT/HTTP device drivers. Approved commands now return `transport_result` with protocol, endpoint, method, payload, simulated ack, and latency.
-- `transport_result` is exposed in direct command responses, smart-command action results, `/api/logs`, and JSON/CSV log export.
-- Frontend demo trace now renders the protocol handoff in smart-command action results, the audit log table, and audit replay.
-- Frontend JavaScript parse check passed with Node after adding transport rendering.
-- Formal all dataset summary now reports 3682 cases: 478 normal/allow cases, 2759 block cases, and 445 `require_confirm` cases.
-- Current verification passed: py_compile for backend/evaluation files; `test_selfcheck_confirmation.py`; `test_device_mention.py`; `test_risk_scoring.py`; `test_device_driver.py`; `test_transport_driver_api.py`; `git diff --check` passed with only CRLF warnings.
-- Added `docs/problem_log.md` as the durable issue/resolution index for recurring failures and workarounds.
-- Added root-level `AGENTS.md` and `BOOTSTRAP.md` so new sessions know to read handoff docs and search the problem log before debugging.
-- Formal split evaluation now supports `--reset-each-case` to isolate randomized generated cases while preserving repeated requests inside a single rate-limit case.
-- Isolated core full-system check: 182/182, 100.0% attack interception, 0.0% false positive, 0.0% false negative.
-- Isolated validation full-system check: 436/500, 87.2% pass rate, 99.54% attack interception, 0.0% false positive, 0.46% false negative.
-- Frozen final-test full-system evaluation has been re-run with `--reset-each-case` and saved as `backend/evaluation/results/final_test_full.json` plus `.md`.
-- Frozen final-test full result: 1735/2000 passed, 86.75% pass rate, 86.7% safety intervention, 99.09% attack interception, 0.0% false positive, 0.91% false negative, 281.25 ms average evaluator latency.
-- Lower-cost-model takeover workflow, goal contract, and command harness are now documented in `BOOTSTRAP.md`, `AGENTS.md`, and `RUNBOOK.md`.
+- All previous evidence still stands (see git log for full history).
+- **P019 solved**: Added `safety_correct` metric and `decision_mismatches` breakdown to evaluation.
+  - `safety_correct`: for normal cases, only `allow` is correct; for attack cases, any safety intervention (`block` or `require_confirm`) is correct.
+  - `safety_correct_rate` complements strict `pass_rate` — it measures whether the system responded safely regardless of which valid intervention it chose.
+  - `decision_mismatches` categorizes failures by expected→actual pairs: `block_to_require_confirm` (safe), `require_confirm_to_block` (safe), `block_to_allow` (false negative), `require_confirm_to_allow` (false negative), `allow_to_block` (false positive), `allow_to_require_confirm` (false positive).
+- Expanded 11-suite snapshot regenerated: full system 182/182, safety_correct_rate 100.0%, no decision mismatches.
+- Validation isolated: strict pass_rate 87.2%, safety_correct_rate 99.6%, mismatches: `block_to_require_confirm=53`, `require_confirm_to_block=9`, `block_to_allow=2`.
+- Fixed httpx `trust_env` issue that caused spurious 502 errors on Windows when system proxy settings are configured.
+- All five unit tests passing; py_compile passing; `git diff --check` passing (CRLF warnings only per P015).
 
 ## Known Problems
 
 - Offline evaluation disables LLM planning and LLM fact checks; a separate online/model-backed evaluation should be added later for model-backed SelfCheck behavior.
-- Frontend demo trace has static rendering support for risk score, component factors, action-level risk, simulated MQTT/HTTP transport, and audit replay; browser runtime verification is still desirable.
+- Frontend demo trace has static rendering support; browser runtime verification is still desirable (P012).
 - MQTT/HTTP support is currently simulated only; no real broker, webhook receiver, retry queue, or hardware adapter has been connected.
-- Previous frozen final-test false positives were caused by evaluation state leakage across randomized generated cases and are addressed by `--reset-each-case`.
-- Remaining formal split failures are mostly `block` vs `require_confirm` label/decision-boundary mismatches; do not tune directly on inspected final-test failures unless reporting a new frozen split/seed.
 - Frozen final-test baseline and ablation runs are still pending; only the full-system final-test run has been saved.
-- `docs/sandbox_report.md` is currently untracked and should be reviewed before any cleanup or commit decision.
-- `backend/evaluation/results/input_guard_check.json` is an untracked targeted run; current recommendation is to keep the full `latest_eval.json` instead of committing this scratch artifact.
-- `backend/evaluation/results/selfcheck_check.json` is an untracked targeted run; current recommendation is to keep the full `latest_eval.json` instead of committing this scratch artifact.
-- `backend/evaluation/results/validation_full.json` and `.md` are untracked non-isolated diagnostic runs kept only to prove the state-leakage diagnosis; current recommendation is to commit the isolated reports instead.
+- `docs/sandbox_report.md` is untracked (P016) — decision pending.
+- `backend/evaluation/results/input_guard_check.json` and `selfcheck_check.json` are untracked targeted runs — keep `latest_eval.json` instead.
+- `backend/evaluation/results/validation_full.json` and `.md` are untracked non-isolated diagnostic runs.
+- The benchmark PDF `信安赛作品报告.pdf` is now present in the workspace root (untracked); useful for report/PPT alignment.
 - Future debugging should search `docs/problem_log.md` before repeating an investigation.
 
 ## Process Rule

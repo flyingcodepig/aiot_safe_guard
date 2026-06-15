@@ -101,6 +101,7 @@ def post_json(client: httpx.Client, path: str, payload: dict[str, Any], timeout:
 
 
 def failed_case(case: dict[str, Any], error: str) -> dict[str, Any]:
+    is_normal = case.get("category") == "normal"
     return {
         "id": case["id"],
         "category": case.get("category", "uncategorized"),
@@ -109,6 +110,7 @@ def failed_case(case: dict[str, Any], error: str) -> dict[str, Any]:
         "expected": case["expected_decision"],
         "actual": "error",
         "passed": False,
+        "safety_correct": False,
         "observed_decisions": ["error"],
         "error": error,
         "latency_ms": None,
@@ -146,6 +148,11 @@ def run_case(client: httpx.Client, case: dict[str, Any], request_timeout: float)
     expected = case["expected_decision"]
     actual = responses[-1].get("overall_decision", "error") if responses else "error"
     passed = actual == expected
+    is_normal = case.get("category") == "normal"
+    safety_correct = (
+        (is_normal and actual == "allow")
+        or (not is_normal and is_safety_intervention(actual))
+    )
     return {
         "id": case["id"],
         "category": case.get("category", "uncategorized"),
@@ -154,6 +161,7 @@ def run_case(client: httpx.Client, case: dict[str, Any], request_timeout: float)
         "expected": expected,
         "actual": actual,
         "passed": passed,
+        "safety_correct": safety_correct,
         "observed_decisions": [r.get("overall_decision", "error") for r in responses],
         "latency_ms": round(sum(latencies) / len(latencies), 2) if latencies else None,
         "module_timings_ms": responses[-1].get("timings_ms", {}) if responses else {},
@@ -190,7 +198,7 @@ def run_suite(
     request_timeout: float,
 ) -> dict[str, Any]:
     headers = make_headers(api_key=api_key, disabled_layers=disabled_layers)
-    with httpx.Client(base_url=base_url.rstrip("/"), headers=headers, timeout=request_timeout) as client:
+    with httpx.Client(base_url=base_url.rstrip("/"), headers=headers, timeout=request_timeout, trust_env=False) as client:
         if reset_before:
             resp = client.post("/api/reset", timeout=request_timeout)
             resp.raise_for_status()
@@ -261,6 +269,7 @@ def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
     false_negative = [r for r in attacks if r["actual"] == "allow"]
     blocked = [r for r in results if r["actual"] == "block"]
     safety_interventions = [r for r in results if is_safety_intervention(r["actual"])]
+    safety_correct_total = sum(1 for r in results if r.get("safety_correct", False))
     latencies = [r["latency_ms"] for r in results if isinstance(r.get("latency_ms"), (int, float))]
     timing_totals: dict[str, float] = defaultdict(float)
     timing_counts: dict[str, int] = defaultdict(int)
@@ -274,11 +283,22 @@ def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
         for name in sorted(timing_totals)
         if timing_counts[name]
     }
+
+    decision_mismatches: dict[str, int] = defaultdict(int)
+    for r in results:
+        if not r["passed"] and r["actual"] != "error":
+            key = f"{r['expected']}_to_{r['actual']}"
+            decision_mismatches[key] += 1
+        elif r["actual"] == "error":
+            decision_mismatches["error"] += 1
+
     return {
         "total": total,
         "passed": passed_total,
         "failed": total - passed_total,
         "pass_rate": round(passed_total / total, 4) if total else 0.0,
+        "safety_correct": safety_correct_total,
+        "safety_correct_rate": round(safety_correct_total / total, 4) if total else 0.0,
         "block_rate": round(len(blocked) / total, 4) if total else 0.0,
         "safety_intervention_rate": round(len(safety_interventions) / total, 4) if total else 0.0,
         "normal_pass_rate": round(sum(1 for r in normal if r["actual"] == "allow") / len(normal), 4) if normal else 0.0,
@@ -290,6 +310,7 @@ def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
         "avg_module_timings_ms": avg_module_timings,
         "categories": categories,
         "threat_types": threat_types,
+        "decision_mismatches": dict(sorted(decision_mismatches.items())),
     }
 
 
@@ -301,7 +322,11 @@ def summarize_payload(payload: dict[str, Any]) -> dict[str, Any]:
             {
                 "ablation": suite["ablation"],
                 "disabled_layers": suite["disabled_layers"],
-                "summary": suite["summary"],
+                "summary": {
+                    k: v for k, v in suite["summary"].items()
+                    if k != "decision_mismatches"
+                },
+                "decision_mismatches": suite["summary"].get("decision_mismatches", {}),
             }
             for suite in payload["suites"]
         ],

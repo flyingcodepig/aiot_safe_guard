@@ -39,7 +39,7 @@ def wait_for_health(base_url: str, timeout_seconds: int) -> dict:
     last_error = None
     while time.time() < deadline:
         try:
-            resp = httpx.get(f"{base_url}/health", timeout=2.0)
+            resp = httpx.get(f"{base_url}/health", timeout=2.0, trust_env=False)
             resp.raise_for_status()
             return resp.json()
         except Exception as exc:  # noqa: BLE001 - report last startup error

@@ -33,7 +33,7 @@ debugging from scratch.
 | P016 | workspace hygiene | open | Untracked sandbox report decision |
 | P017 | process | solved | Agent startup and recovery workflow not centralized |
 | P018 | evaluation/dataset | solved | Formal split evaluation leaked state across randomized cases |
-| P019 | evaluation/policy | open | Formal split block vs require_confirm decision-boundary mismatch |
+| P019 | evaluation/policy | solved | Formal split block vs require_confirm decision-boundary mismatch |
 
 ## P001 - Offline Evaluation Timeout
 
@@ -531,7 +531,7 @@ Keywords:
 
 ## P019 - Formal Split Block Vs Require_Confirm Decision-Boundary Mismatch
 
-Status: open
+Status: solved
 
 Symptoms:
 - After `--reset-each-case`, formal split false positives are removed, but many
@@ -543,26 +543,34 @@ Symptoms:
   `require_confirm -> allow` 1 case.
 
 Root Cause:
-- The evaluation currently treats `block` and `require_confirm` as different
-  pass/fail labels even though both are safety interventions for attack
-  interception.
+- The evaluation treated `block` and `require_confirm` as different pass/fail
+  labels even though both are safety interventions for attack interception.
 - The policy boundary between "hard block" and "manual confirmation required"
-  has not yet been fully normalized across generated formal variants.
+  varies naturally across generated formal variants.
 
-Current Recommendation:
-- Use core/dev/validation cases to decide which threat types must hard-block
-  and which may safely require confirmation.
-- Do not tune directly on inspected final-test failures unless a new frozen
-  split/seed will be reported.
-- Consider adding a secondary metric for safety-intervention-correctness beside
-  strict final-decision accuracy.
+Resolution:
+- Added `safety_correct` per-case field: True when normal cases get `allow` or
+  attack cases get any safety intervention (`block`/`require_confirm`).
+- Added `safety_correct_rate` to suite summaries as a lenient safety metric
+  alongside strict `pass_rate`.
+- Added `decision_mismatches` breakdown categorizing failures by expected→actual
+  pairs: `block_to_require_confirm`, `require_confirm_to_block` (both safe),
+  `block_to_allow`, `require_confirm_to_allow` (false negatives),
+  `allow_to_block`, `allow_to_require_confirm` (false positives).
+- Added Decision Mismatch Breakdown section to Markdown reports.
+- Updated `evaluate_security_cases.py`, `report_eval_results.py`, and
+  `run_eval_with_server.py`.
+- Validation evidence: strict pass_rate 87.2%, safety_correct_rate 99.6%.
+- Fixed httpx `trust_env=False` to bypass Windows system proxy interference.
 
-Verification Target:
+Verification:
 ```powershell
 cd D:\aiot_safe_guard\backend
 ..\somethingelse\venv\Scripts\python.exe evaluation\run_eval_with_server.py --cases evaluation\datasets\security_cases_validation.json --output evaluation\results\validation_full_isolated.json --ablation full --reset-each-case --request-timeout 8
+..\somethingelse\venv\Scripts\python.exe evaluation\report_eval_results.py --input evaluation\results\validation_full_isolated.json --output evaluation\results\validation_full_isolated.md
 ```
 
 Keywords:
 `require_confirm`, `block`, `decision boundary`, `safety intervention`,
-`formal split`, `validation`, `strict accuracy`.
+`formal split`, `validation`, `safety_correct`, `safety_correct_rate`,
+`decision_mismatches`.

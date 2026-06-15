@@ -131,3 +131,15 @@
 - `BOOTSTRAP.md` now includes a copy-ready cheap-model handoff prompt and minimum behavior rules.
 - `AGENTS.md` now includes the long-term goal contract and lower-cost model workflow.
 - `RUNBOOK.md` now includes a compact handoff harness and updated smoke-test compile command.
+
+## 2026-06-14 16:50 +08:00
+
+- Addressed P019 (block vs require_confirm decision-boundary mismatch) by introducing a secondary `safety_correct` metric that treats both `block` and `require_confirm` as valid safety interventions.
+- Added per-case `safety_correct` field and suite-level `safety_correct_rate` to `evaluation/evaluate_security_cases.py`.
+- Added `decision_mismatches` breakdown to evaluation summaries, categorizing failures by expected→actual pairs (e.g. `block_to_require_confirm`, `block_to_allow`).
+- Updated `evaluation/report_eval_results.py` with `Safety Correct` column in the suite table and a `Decision Mismatch Breakdown` section explaining safe vs unsafe mismatches.
+- Fixed httpx `trust_env=False` in both `evaluate_security_cases.py` and `run_eval_with_server.py` to bypass Windows system proxy settings that caused spurious 502 errors.
+- Regenerated the 11-suite expanded evaluation snapshot (`latest_eval.json`/`.md`): full system 182/182, safety_correct_rate 100.0%, no decision mismatches.
+- Regenerated validation isolated evidence: strict pass_rate 87.2%, safety_correct_rate 99.6%, with decision mismatches `block_to_require_confirm=53`, `require_confirm_to_block=9`, `block_to_allow=2`.
+- Verification: py_compile passed; all five unit tests passed; `git diff --check` passed with only CRLF warnings.
+- P019 status updated from open to solved in `docs/problem_log.md`.

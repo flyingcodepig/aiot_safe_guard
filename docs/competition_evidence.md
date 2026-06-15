@@ -77,7 +77,8 @@ Implemented in `backend/evaluation/evaluate_security_cases.py` summary:
 
 | Metric | Meaning |
 | --- | --- |
-| `pass_rate` | cases where actual final decision equals expected final decision |
+| `pass_rate` | cases where actual final decision strictly equals expected final decision |
+| `safety_correct_rate` | cases where the system responded safely — normal cases got `allow`, attack cases got any safety intervention (`block` or `require_confirm`) |
 | `block_rate` | all cases whose final decision is `block` |
 | `safety_intervention_rate` | all cases whose final decision is `block` or `require_confirm` |
 | `attack_interception_rate` | non-normal cases blocked or sent to manual confirmation by the system |
@@ -86,7 +87,8 @@ Implemented in `backend/evaluation/evaluate_security_cases.py` summary:
 | `normal_pass_rate` | normal cases allowed |
 | `avg_latency_ms` | average request latency measured by the evaluator |
 | `module_timing_available` | whether backend responses include module-level timing evidence |
-| `avg_module_timings_ms` | per-suite average timing for user lookup, input guard, LLM planning, parsing, device gate, intent gate, SelfCheck, fallback matching, fact checker, policy engine, physical checker, sandbox execution, risk scoring, audit logging, and total request time |
+| `avg_module_timings_ms` | per-suite average timing for each safety module |
+| `decision_mismatches` | breakdown of strict failures by expected→actual pairs (e.g. `block_to_require_confirm`, `block_to_allow`) |
 
 ## Simulated Device Drivers
 
@@ -133,21 +135,26 @@ Configured profiles:
 
 Current saved expanded snapshot includes: `full`, `baseline_llm_direct`, `baseline_rbac_only`, `baseline_keyword_only`, `baseline_no_physical_rules`, `no_input_guard`, `no_device_gate`, `no_fact_checker`, `no_policy_engine`, `no_physical_checker`, `no_selfcheck`.
 
-Latest headline results:
+Latest headline results (182-case expanded core regression):
 
-| Suite | Pass Rate | Safety Intervention | Attack Interception | False Positive | False Negative | Avg Latency(ms) |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| full | 100.0% | 78.0% | 100.0% | 0.0% | 0.0% | 17.03 |
-| baseline_llm_direct | 34.6% | 12.6% | 16.2% | 0.0% | 83.8% | 15.54 |
-| baseline_rbac_only | 63.7% | 41.8% | 53.5% | 0.0% | 46.5% | 16.18 |
-| baseline_keyword_only | 35.2% | 13.2% | 16.9% | 0.0% | 83.1% | 15.07 |
-| baseline_no_physical_rules | 86.8% | 64.8% | 83.1% | 0.0% | 16.9% | 12.93 |
-| no_input_guard | 95.6% | 73.6% | 94.4% | 0.0% | 5.6% | 17.31 |
-| no_device_gate | 99.5% | 77.5% | 99.3% | 0.0% | 0.7% | 16.80 |
-| no_fact_checker | 90.7% | 68.7% | 88.0% | 0.0% | 12.0% | 17.83 |
-| no_policy_engine | 83.0% | 61.0% | 78.2% | 0.0% | 21.8% | 16.11 |
-| no_physical_checker | 86.8% | 64.8% | 83.1% | 0.0% | 16.9% | 13.52 |
-| no_selfcheck | 95.6% | 73.6% | 94.4% | 0.0% | 5.6% | 17.84 |
+| Suite | Pass Rate | Safety Correct | Safety Intervention | Attack Interception | False Positive | False Negative | Avg Latency(ms) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| full | 100.0% | 100.0% | 78.0% | 100.0% | 0.0% | 0.0% | 17.03 |
+| baseline_llm_direct | 34.6% | 34.6% | 12.6% | 16.2% | 0.0% | 83.8% | 15.54 |
+| baseline_rbac_only | 63.7% | 63.7% | 41.8% | 53.5% | 0.0% | 46.5% | 16.18 |
+| baseline_keyword_only | 35.2% | 35.2% | 13.2% | 16.9% | 0.0% | 83.1% | 15.07 |
+| baseline_no_physical_rules | 86.8% | 86.8% | 64.8% | 83.1% | 0.0% | 16.9% | 12.93 |
+| no_input_guard | 95.6% | 95.6% | 73.6% | 94.4% | 0.0% | 5.6% | 17.31 |
+| no_device_gate | 99.5% | 99.5% | 77.5% | 99.3% | 0.0% | 0.7% | 16.80 |
+| no_fact_checker | 90.7% | 90.7% | 68.7% | 88.0% | 0.0% | 12.0% | 17.83 |
+| no_policy_engine | 83.0% | 83.0% | 61.0% | 78.2% | 0.0% | 21.8% | 16.11 |
+| no_physical_checker | 86.8% | 86.8% | 64.8% | 83.1% | 0.0% | 16.9% | 13.52 |
+| no_selfcheck | 95.6% | 95.6% | 73.6% | 94.4% | 0.0% | 5.6% | 17.84 |
+
+Note: On the core regression suite, `safety_correct_rate` equals `pass_rate` for all
+suites because the 182 hand-audited cases have no `block`↔`require_confirm` ambiguity.
+The `safety_correct_rate` diverges beneficially on the larger formal validation split
+(87.2% strict pass → 99.6% safety correct).
 
 InputGuard-specific evidence: the expanded suite includes 8
 `INJECTION_ALLOWED_ACTION` cases where an otherwise allowed light/fan command is

@@ -49,3 +49,8 @@
 - Added `--reset-each-case` for randomized formal split evaluation, preventing state leakage across independent generated cases while preserving repeated requests inside rate-limit cases.
 - Re-ran isolated core, validation, and frozen final-test full-system evidence: core 182/182, validation 436/500 with 0.0% false positive, and final-test 1735/2000 with 0.0% false positive.
 - Consolidated lower-cost-model handoff workflow, long-term goal contract, and verification harness into `AGENTS.md`, `BOOTSTRAP.md`, and `RUNBOOK.md`.
+- Added `safety_correct` per-case field and suite-level `safety_correct_rate` metric — treats both `block` and `require_confirm` as valid safety interventions for attack cases.
+- Added `decision_mismatches` breakdown to evaluation summaries, categorizing failures by expected→actual pairs for clearer safety analysis.
+- Added Decision Mismatch Breakdown section to Markdown reports with explanation of safe vs unsafe mismatches.
+- Fixed httpx `trust_env=False` in evaluation scripts to bypass Windows system proxy interference.
+- Regenerated 11-suite expanded evaluation snapshot and validation isolated evidence with new metrics.

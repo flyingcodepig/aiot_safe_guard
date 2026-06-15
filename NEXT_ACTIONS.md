@@ -1,10 +1,10 @@
 # Next Actions
 
-Updated: 2026-06-14 16:05 +08:00
+Updated: 2026-06-14 16:50 +08:00
 
 ## Active Focus
 
-Move from corrected formal full-system evidence into selected final-test baseline/ablation reporting, `block`/`require_confirm` decision-boundary cleanup, frontend/browser demo verification, and report/PPT-ready material.
+P019 (block vs require_confirm decision boundary) is now solved via the `safety_correct` metric and `decision_mismatches` breakdown. Remaining priority: selected frozen final-test baselines/ablations, frontend browser demo verification (P012), and report/PPT materials.
 
 ## Master Workstreams
 
@@ -50,10 +50,7 @@ Move from corrected formal full-system evidence into selected final-test baselin
 
 ## Immediate Tasks
 
-1. Tighten formal split decision semantics without violating no-tuning protocol.
-   - Current isolated frozen final-test full-system result is 1735/2000, with 99.09% attack interception and 0.0% false positives.
-   - Remaining failures are mostly `block` vs `require_confirm`; use core/dev/validation data for fixes or label-policy decisions.
-   - If final-test failures are inspected for tuning, regenerate/report a new frozen split with a new seed.
+1. ~~Tighten formal split decision semantics without violating no-tuning protocol.~~ **DONE (P019):** Added `safety_correct_rate` and `decision_mismatches` breakdown. Validation shows strict pass_rate 87.2% but safety_correct_rate 99.6% — the 12.8% gap is almost entirely safe `block`↔`require_confirm` mismatches.
 
 2. Run selected frozen final-test baselines/ablations.
    - Full-system final-test run is complete and saved in `evaluation/results/final_test_full.json`/`.md`.

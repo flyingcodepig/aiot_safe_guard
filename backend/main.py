@@ -348,7 +348,7 @@ def finalize_timings(timings: Dict[str, float], request_start: float) -> Dict[st
 # API Key 认证中间件（纯 ASGI 中间件，与 FastAPI 完全兼容）
 from starlette.responses import JSONResponse
 
-SKIP_AUTH_PREFIXES = ("/static", "/health")
+SKIP_AUTH_PREFIXES = ("/static", "/health", "/api/eval_results")
 SKIP_AUTH_EXACT = {"/", "/api/config"}
 
 class APIKeyMiddleware:
@@ -628,6 +628,16 @@ async def list_devices():
 @app.get("/api/stats")
 async def get_stats():
     return audit_logger.get_stats()
+
+@app.get("/api/eval_results")
+async def get_eval_results():
+    """Serve the latest evaluation results for the frontend evidence page."""
+    from pathlib import Path as _Path
+    import json as _json
+    results_file = _Path(__file__).resolve().parent / "evaluation" / "results" / "latest_eval.json"
+    if not results_file.exists():
+        raise HTTPException(status_code=404, detail="evaluation results not found — run the eval first")
+    return _json.loads(results_file.read_text(encoding="utf-8"))
 
 @app.get("/api/logs")
 async def get_logs(limit: int = 50, final_decision: Optional[str] = None, user_role: Optional[str] = None):

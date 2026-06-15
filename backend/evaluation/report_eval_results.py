@@ -37,20 +37,21 @@ def metric(value: Any) -> str:
 
 def suite_table(payload: dict[str, Any]) -> list[str]:
     lines = [
-        "| Suite | Disabled Layers | Total | Passed | Failed | Pass Rate | Safety Intervention | Attack Interception | False Positive | False Negative | Normal Pass | Avg Latency(ms) |",
-        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| Suite | Disabled Layers | Total | Passed | Failed | Pass Rate | Safety Correct | Safety Intervention | Attack Interception | False Positive | False Negative | Normal Pass | Avg Latency(ms) |",
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for suite in payload["suites"]:
         summary = suite["summary"]
         disabled = ", ".join(suite.get("disabled_layers", [])) or "none"
         lines.append(
-            "| {suite} | {disabled} | {total} | {passed} | {failed} | {rate} | {intervention} | {attack} | {fp} | {fn} | {normal} | {latency} |".format(
+            "| {suite} | {disabled} | {total} | {passed} | {failed} | {rate} | {safety_correct} | {intervention} | {attack} | {fp} | {fn} | {normal} | {latency} |".format(
                 suite=suite["ablation"],
                 disabled=disabled,
                 total=summary["total"],
                 passed=summary["passed"],
                 failed=summary["failed"],
                 rate=percent(summary["pass_rate"]),
+                safety_correct=percent_or_na(summary.get("safety_correct_rate")),
                 intervention=percent_or_na(summary.get("safety_intervention_rate")),
                 attack=percent_or_na(summary.get("attack_interception_rate")),
                 fp=percent_or_na(summary.get("false_positive_rate")),
@@ -172,15 +173,35 @@ def failed_cases(suite: dict[str, Any], limit: int) -> list[str]:
         return lines
 
     lines.extend([
-        "| Case | Category | Threat Type | Expected | Actual |",
-        "| --- | --- | --- | --- | --- |",
+        "| Case | Category | Threat Type | Expected | Actual | Safety Correct |",
+        "| --- | --- | --- | --- | --- | --- |",
     ])
     for case in failed[:limit]:
         lines.append(
-            f"| {case['id']} | {case['category']} | {case.get('threat_type', '-')} | {case['expected']} | {case['actual']} |"
+            f"| {case['id']} | {case['category']} | {case.get('threat_type', '-')} | {case['expected']} | {case['actual']} | {case.get('safety_correct', False)} |"
         )
     if len(failed) > limit:
         lines.append(f"| ... | ... | ... | {len(failed) - limit} more |")
+    return lines
+
+
+def decision_mismatch_table(payload: dict[str, Any]) -> list[str]:
+    """Render decision-mismatch breakdown across suites."""
+    lines = [
+        "| Suite | Mismatch | Count |",
+        "| --- | --- | ---: |",
+    ]
+    has_any = False
+    for suite in payload["suites"]:
+        mismatches = suite.get("decision_mismatches") or suite["summary"].get("decision_mismatches", {})
+        if mismatches:
+            has_any = True
+            for key, count in sorted(mismatches.items()):
+                lines.append(f"| {suite['ablation']} | {key} | {count} |")
+        else:
+            lines.append(f"| {suite['ablation']} | (none) | 0 |")
+    if not has_any:
+        return ["No decision mismatches across any suite."]
     return lines
 
 
@@ -216,6 +237,17 @@ def render_markdown(payload: dict[str, Any], failure_limit: int) -> str:
     for suite in payload["suites"]:
         lines.extend(failed_cases(suite, failure_limit))
         lines.append("")
+
+    lines.extend(["## Decision Mismatch Breakdown", ""])
+    lines.append(
+        "Safety-correct mismatches (`block` ↔ `require_confirm`) are safe "
+        "interventions where the system chose a different valid response than "
+        "the expected label. Unsafe mismatches (`*_to_allow` and `allow_to_*`) "
+        "are false negatives or false positives."
+    )
+    lines.append("")
+    lines.extend(decision_mismatch_table(payload))
+    lines.append("")
 
     lines.extend(["## High-Risk Blocked Cases", ""])
     for suite in payload["suites"]:
